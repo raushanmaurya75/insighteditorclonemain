@@ -169,7 +169,7 @@ function ProfilePage() {
 
         <section className="reel-grid" aria-label="Video posts">
           {reels.map((reel) => (
-            <Link to="/insight-view" className="reel" key={reel.views} title="View Reel Insights">
+            <Link to="/post-view" className="reel" key={reel.views} title="View Reel Post">
               <img
                 src={reel.image}
                 alt="Video thumbnail"

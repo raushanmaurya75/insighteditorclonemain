@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as InsightViewRouteImport } from './routes/insight-view'
 import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as PostViewRouteImport } from './routes/post-view'
 import { Route as ProfileRouteImport } from './routes/profile'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const InsightsRoute = InsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PostViewRoute = PostViewRouteImport.update({
+  id: '/post-view',
+  path: '/post-view',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof HomeRoute
   '/insight-view': typeof InsightViewRoute
   '/insights': typeof InsightsRoute
+  '/post-view': typeof PostViewRoute
   '/profile': typeof ProfileRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRoute
   '/insight-view': typeof InsightViewRoute
   '/insights': typeof InsightsRoute
+  '/post-view': typeof PostViewRoute
   '/profile': typeof ProfileRoute
 }
 export interface FileRoutesById {
@@ -70,14 +78,28 @@ export interface FileRoutesById {
   '/home': typeof HomeRoute
   '/insight-view': typeof InsightViewRoute
   '/insights': typeof InsightsRoute
+  '/post-view': typeof PostViewRoute
   '/profile': typeof ProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dashboard' | '/home' | '/insight-view' | '/insights' | '/profile'
+    | '/'
+    | '/dashboard'
+    | '/home'
+    | '/insight-view'
+    | '/insights'
+    | '/post-view'
+    | '/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/home' | '/insight-view' | '/insights' | '/profile'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/home'
+    | '/insight-view'
+    | '/insights'
+    | '/post-view'
+    | '/profile'
   id:
     | '__root__'
     | '/'
@@ -85,6 +107,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/insight-view'
     | '/insights'
+    | '/post-view'
     | '/profile'
   fileRoutesById: FileRoutesById
 }
@@ -94,6 +117,7 @@ export interface RootRouteChildren {
   HomeRoute: typeof HomeRoute
   InsightViewRoute: typeof InsightViewRoute
   InsightsRoute: typeof InsightsRoute
+  PostViewRoute: typeof PostViewRoute
   ProfileRoute: typeof ProfileRoute
 }
 
@@ -134,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/post-view': {
+      id: '/post-view'
+      path: '/post-view'
+      fullPath: '/post-view'
+      preLoaderRoute: typeof PostViewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -150,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRoute: HomeRoute,
   InsightViewRoute: InsightViewRoute,
   InsightsRoute: InsightsRoute,
+  PostViewRoute: PostViewRoute,
   ProfileRoute: ProfileRoute,
 }
 export const routeTree = rootRouteImport
