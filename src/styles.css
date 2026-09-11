@@ -414,17 +414,22 @@ button {
   background: transparent;
   display: grid;
   place-items: center;
-  color: inherit;
+  color: var(--ink);
   text-decoration: none;
-  transition: transform 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+  opacity: 0.6;
 }
 .bottom-nav a:hover,
 .bottom-nav button:hover {
   transform: scale(1.08);
+  opacity: 0.85;
 }
 .bottom-nav .current {
   color: var(--ink);
-  transform: scale(1.08);
+  transform: scale(1.1);
+  opacity: 1;
 }
 .bottom-nav .current svg {
   fill: var(--ink);
@@ -442,10 +447,12 @@ button {
   overflow: hidden;
   padding: 1px;
   transition: all 0.2s ease;
+  opacity: 0.65;
 }
 .bottom-nav .mini-profile.current {
   border-color: var(--ink);
   transform: scale(1.08);
+  opacity: 1;
 }
 .mini-profile img {
   width: 100%;
