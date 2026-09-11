@@ -61,36 +61,25 @@ function InfoTitle({ children }: { children: string }) {
 
 function InsightHeader() {
   return (
-    <>
-      <div className="iv-status" aria-hidden="true">
-        <strong>8:27</strong>
-        <span className="iv-island">
-          <i />
-        </span>
-        <span className="iv-network">
-          ▮▮▮▮&nbsp; 5G&nbsp; <b>65</b>
-        </span>
-      </div>
-      <header className="iv-header">
-        <Link
-          to="/insights"
-          aria-label="Back to insights"
-          title="Back to insights"
-          className="text-inherit no-underline"
-        >
-          <ChevronLeft />
-        </Link>
-        <h1>Insights</h1>
-        <Link
-          to="/dashboard"
-          aria-label="Professional Dashboard"
-          title="Dashboard"
-          className="text-inherit no-underline"
-        >
-          <Info />
-        </Link>
-      </header>
-    </>
+    <header className="iv-header">
+      <Link
+        to="/insights"
+        aria-label="Back to insights"
+        title="Back to insights"
+        className="text-inherit no-underline"
+      >
+        <ChevronLeft />
+      </Link>
+      <h1>Insights</h1>
+      <Link
+        to="/dashboard"
+        aria-label="Professional Dashboard"
+        title="Dashboard"
+        className="text-inherit no-underline"
+      >
+        <Info />
+      </Link>
+    </header>
   );
 }
 
