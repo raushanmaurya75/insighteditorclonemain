@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   IgChevronDown,
+  IgCreate,
   IgDashboard,
   IgDiscord,
   IgGrid,
@@ -63,7 +64,7 @@ function ProfilePage() {
       <div className="phone-shell pb-24">
         <nav className="profile-nav" aria-label="Profile navigation">
           <Link to="/" aria-label="Home feed" title="Home feed">
-            <IgPlus />
+            <IgCreate />
           </Link>
           <button className="handle" type="button">
             btwdorian <IgChevronDown />
@@ -157,7 +158,6 @@ function ProfilePage() {
           </button>
           <Link to="/insight-view" className="active" aria-label="Videos" title="Reel Insights">
             <IgReels />
-            <IgChevronDown />
           </Link>
           <button aria-label="Reposts" type="button">
             <IgRepost />

@@ -12,7 +12,61 @@ function Svg({ size = 24, children, viewBox = "0 0 24 24", ...rest }: IconProps)
 
 export const IgPlus = (p: IconProps) => (
   <Svg {...p}>
-    <path d="M21 11h-8V3a1 1 0 1 0-2 0v8H3a1 1 0 1 0 0 2h8v8a1 1 0 1 0 2 0v-8h8a1 1 0 1 0 0-2Z" />
+    <line
+      x1="12"
+      y1="5"
+      x2="12"
+      y2="19"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <line
+      x1="5"
+      y1="12"
+      x2="19"
+      y2="12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const IgCreate = (p: IconProps) => (
+  <Svg {...p}>
+    <rect
+      x="3"
+      y="3"
+      width="18"
+      height="18"
+      rx="5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <line
+      x1="12"
+      y1="8"
+      x2="12"
+      y2="16"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <line
+      x1="8"
+      y1="12"
+      x2="16"
+      y2="12"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
   </Svg>
 );
 
@@ -91,15 +145,54 @@ export const IgDashboard = (p: IconProps) => (
 
 export const IgGrid = (p: IconProps) => (
   <Svg {...p}>
-    <rect height="6" rx="1" ry="1" width="4.667" x="3" y="1" />
-    <rect height="6" rx="1" ry="1" width="4.667" x="16.333" y="1" />
-    <rect height="6" rx="1" ry="1" width="4.667" x="9.667" y="1" />
-    <rect height="6" rx="1" ry="1" width="4.667" x="3" y="9" />
-    <rect height="6" rx="1" ry="1" width="4.667" x="16.333" y="9" />
-    <rect height="6" rx="1" ry="1" width="4.667" x="9.667" y="9" />
-    <rect height="6" rx="1" ry="1" width="4.667" x="3" y="17" />
-    <rect height="6" rx="1" ry="1" width="4.667" x="16.333" y="17" />
-    <rect height="6" rx="1" ry="1" width="4.667" x="9.667" y="17" />
+    <rect
+      x="3"
+      y="3"
+      width="18"
+      height="18"
+      rx="1.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <line
+      x1="9"
+      y1="3"
+      x2="9"
+      y2="21"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <line
+      x1="15"
+      y1="3"
+      x2="15"
+      y2="21"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <line
+      x1="3"
+      y1="9"
+      x2="21"
+      y2="9"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <line
+      x1="3"
+      y1="15"
+      x2="21"
+      y2="15"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
   </Svg>
 );
 
@@ -121,20 +214,70 @@ export const IgReels = ({ active = false, ...p }: NavIconProps) => (
 export const IgRepost = (p: IconProps) => (
   <Svg {...p}>
     <path
-      d="M16.5 3.5 20 7l-3.5 3.5M4 7h16M7.5 20.5 4 17l3.5-3.5M20 17H4"
+      d="M17 2l4 4-4 4"
       fill="none"
       stroke="currentColor"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+    />
+    <path
+      d="M3 11V9a4 4 0 0 1 4-4h14"
+      fill="none"
+      stroke="currentColor"
       strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M7 22l-4-4 4-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M21 13v2a4 4 0 0 1-4 4H3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
   </Svg>
 );
 
 export const IgTagged = (p: IconProps) => (
   <Svg {...p}>
-    <path d="M21 7.48a2 2 0 0 0-2-2h-3.046a2.002 2.002 0 0 1-1.506-.683l-1.695-1.939a1 1 0 0 0-1.506 0L9.552 4.797c-.38.434-.93.682-1.506.682H5a2 2 0 0 0-2 2V19l.01.206A2 2 0 0 0 5 21h14a2 2 0 0 0 2-2V7.48ZM23 19a4 4 0 0 1-4 4H5a4 4 0 0 1-3.995-3.794L1 19V7.48a4 4 0 0 1 4-4h3.046l1.696-1.94a3 3 0 0 1 4.516 0l1.696 1.94H19a4 4 0 0 1 4 4V19Z" />
-    <path d="M14.5 10.419a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Zm2 0a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM12 16.003c3.511 0 6.555 1.99 8.13 4.906a1 1 0 0 1-1.76.95c-1.248-2.31-3.64-3.857-6.37-3.857S6.878 19.55 5.63 21.86a1 1 0 0 1-1.76-.951c1.575-2.915 4.618-4.906 8.13-4.906Z" />
+    <path
+      d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M6.5 19.5a6 6 0 0 1 11 0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <rect
+      x="3"
+      y="3"
+      width="18"
+      height="18"
+      rx="3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </Svg>
 );
 
