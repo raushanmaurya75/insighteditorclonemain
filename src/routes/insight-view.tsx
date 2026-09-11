@@ -3,34 +3,30 @@ import { useState } from "react";
 import {
   Bookmark,
   ChevronLeft,
+  Clock3,
   Heart,
   Info,
   MessageCircle,
   Play,
   Repeat2,
   Send,
-  Store,
-  UserRound,
-  ExternalLink,
-  Clock3,
+  TrendingUp,
 } from "lucide-react";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
-import reelCasino from "@/assets/reel-casino.jpg";
-import reelRoad from "@/assets/reel-road.jpg";
 
 export const Route = createFileRoute("/insight-view")({
   head: () => ({
     meta: [
-      { title: "Reel Insights — btwdorian" },
+      { title: "Reel insights — btwdorian" },
       {
         name: "description",
-        content: "Detailed reel performance, engagement, and audience insights.",
+        content: "Detailed reel performance, engagement, and audience insights for iPhone.",
       },
-      { property: "og:title", content: "Reel Insights — btwdorian" },
+      { property: "og:title", content: "Reel insights — btwdorian" },
       {
         property: "og:description",
-        content: "Detailed reel performance, engagement, and audience insights.",
+        content: "Detailed reel performance, engagement, and audience insights for iPhone.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -40,21 +36,21 @@ export const Route = createFileRoute("/insight-view")({
 });
 
 type Tab = "overview" | "engagement" | "audience";
+type ViewsFilter = "all" | "followers" | "non-followers";
+type AudienceDetailTab = "country" | "age" | "gender";
 
-const thumbnails = [reelMachine, reelCasino, reelRoad, reelCasino, reelMachine];
-const reelMetrics = [
-  { Icon: Heart, value: "48" },
-  { Icon: MessageCircle, value: "2" },
-  { Icon: Repeat2, value: "3" },
-  { Icon: Send, value: "8" },
-  { Icon: Bookmark, value: "6" },
-];
+interface AudienceItem {
+  label: string;
+  pct: string;
+  width: number;
+  purple?: boolean;
+}
 
-function InfoTitle({ children }: { children: string }) {
+function InfoTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="iv-title">
-      {children}
-      <Info aria-hidden="true" />
+      <span>{children}</span>
+      <Info size={16} className="iv-info-icon" aria-hidden="true" />
     </h2>
   );
 }
@@ -66,42 +62,52 @@ function InsightHeader() {
         to="/insights"
         aria-label="Back to insights"
         title="Back to insights"
-        className="text-inherit no-underline"
+        className="iv-round-btn"
       >
-        <ChevronLeft />
+        <ChevronLeft size={22} strokeWidth={2.4} />
       </Link>
-      <h1>Insights</h1>
+      <h1>Reel insights</h1>
       <Link
         to="/dashboard"
         aria-label="Professional Dashboard"
         title="Dashboard"
-        className="text-inherit no-underline"
+        className="iv-round-btn"
       >
-        <Info />
+        <TrendingUp size={20} strokeWidth={2.2} />
       </Link>
     </header>
   );
 }
 
-function ReelStrip() {
+function ReelPreviewAndMetrics() {
+  const reelMetrics = [
+    { Icon: Heart, value: "368" },
+    { Icon: MessageCircle, value: "10" },
+    { Icon: Repeat2, value: "4" },
+    { Icon: Send, value: "4" },
+    { Icon: Bookmark, value: "0" },
+  ];
+
   return (
-    <>
-      <div className="iv-thumbnails" aria-label="Reel previews">
-        {thumbnails.map((image, index) => (
-          <div key={index}>
-            <img src={image} alt="" width={300} height={170} />
-          </div>
-        ))}
+    <section className="iv-top-strip">
+      <div className="iv-thumb-wrap">
+        <img
+          src={reelMachine}
+          alt="Reel preview"
+          width={240}
+          height={135}
+          className="iv-thumb-img"
+        />
       </div>
       <div className="iv-metric-icons">
         {reelMetrics.map(({ Icon, value }) => (
-          <span key={value}>
-            <Icon />
+          <span key={value + Icon.displayName}>
+            <Icon size={22} strokeWidth={1.8} />
             <b>{value}</b>
           </span>
         ))}
       </div>
-    </>
+    </section>
   );
 }
 
@@ -124,252 +130,350 @@ function Tabs({ current, onChange }: { current: Tab; onChange: (tab: Tab) => voi
   );
 }
 
-function InteractionSummary() {
-  return (
-    <section className="iv-section iv-summary">
-      <div className="iv-summary-row">
-        <span>Follows</span>
-        <b>3</b>
-      </div>
-      <InfoTitle>Interactions</InfoTitle>
-      {[
-        ["Likes", "48"],
-        ["Comments", "2"],
-        ["Reposts", "3"],
-        ["Shares", "8"],
-        ["Saves", "6"],
-      ].map(([label, value]) => (
-        <div className="iv-summary-row" key={label}>
-          <span>{label}</span>
-          <b>{value}</b>
-        </div>
-      ))}
-    </section>
-  );
-}
+function OverviewTab() {
+  const [viewsFilter, setViewsFilter] = useState<ViewsFilter>("all");
 
-function RetentionSection() {
-  return (
-    <section className="iv-section">
-      <InfoTitle>When people liked your reel</InfoTitle>
-      <div className="iv-reel-preview">
-        <img src={reelMachine} alt="Escalator reel preview" width={300} height={530} />
-        <Play aria-hidden="true" />
-      </div>
-      <div className="iv-line-chart iv-retention-chart">
-        <span className="iv-y top">50%</span>
-        <span className="iv-y middle">25%</span>
-        <span className="iv-y bottom">0</span>
-        <svg viewBox="0 0 460 130" preserveAspectRatio="none" aria-hidden="true">
-          <line x1="0" y1="8" x2="460" y2="8" />
-          <line x1="0" y1="63" x2="460" y2="63" />
-          <line x1="0" y1="118" x2="460" y2="118" />
-          <polyline points="4,25 16,70 33,92 50,82 67,116 100,116 120,114 145,116 166,114 190,116 217,116 233,104 249,116 267,108 285,116 309,116 327,114 345,116 458,116" />
-        </svg>
-        <div className="iv-x">
-          <span>0:00</span>
-          <span>0:28</span>
-        </div>
-      </div>
-    </section>
-  );
-}
+  const impactRates = [
+    { Icon: Clock3, label: "Skip rate", rate: "22.1%", status: "Lower", positive: true },
+    { Icon: Send, label: "Share rate", rate: "0.1%", status: "Lower", positive: true },
+    { Icon: Heart, label: "Like rate", rate: "8.8%", status: "Lower", positive: true },
+    { Icon: Bookmark, label: "Save rate", rate: "0.0%", status: "Lower", positive: true },
+    { Icon: Repeat2, label: "Repost rate", rate: "0.1%", status: "Lower", positive: true },
+    { Icon: MessageCircle, label: "Comment rate", rate: "0.2%", status: "Higher", positive: true },
+  ];
 
-function PerformanceSection() {
-  const rates = [
-    [Clock3, "Skip rate", "57.2%"],
-    [Send, "Share rate", "0.3%"],
-    [Heart, "Like rate", "1.9%"],
-    [Bookmark, "Save rate", "0.2%"],
-    [Repeat2, "Repost rate", "0.1%"],
-  ] as const;
+  const viewSources = [
+    { label: "Reels tab", pct: "22.9%", width: 22.9 },
+    { label: "Feed", pct: "8.6%", width: 8.6 },
+    { label: "Profile", pct: "4.5%", width: 4.5 },
+    { label: "Stories", pct: "3.4%", width: 3.4 },
+    { label: "Explore", pct: "1.5%", width: 1.5 },
+  ];
+
   return (
-    <section className="iv-section iv-performance">
-      <div className="iv-filter-row">
-        <button className="active">All</button>
-        <button>Followers</button>
-        <button>Non-followers</button>
-      </div>
-      <div className="iv-line-chart iv-compare-chart">
-        <span className="iv-y top">3K</span>
-        <span className="iv-y middle">1.5K</span>
-        <span className="iv-y bottom">0</span>
-        <svg viewBox="0 0 460 170" preserveAspectRatio="none" aria-hidden="true">
-          <line x1="0" y1="8" x2="460" y2="8" />
-          <line x1="0" y1="86" x2="460" y2="86" />
-          <line x1="0" y1="164" x2="460" y2="164" />
-          <polyline className="main" points="4,164 22,26 43,21 160,17 300,16 394,14" />
-          <polyline
-            className="typical"
-            points="4,164 22,146 80,146 150,143 235,143 315,138 455,137"
-          />
-        </svg>
-        <div className="iv-x">
-          <span>23 Aug</span>
-          <span>2 Sep</span>
-          <span>13 Sep</span>
+    <div className="iv-tab-content">
+      {/* Stat Cards */}
+      <section className="iv-stat-cards">
+        <div className="iv-card">
+          <span className="iv-card-label">Average watch time</span>
+          <strong className="iv-card-val">13s</strong>
         </div>
-      </div>
-      <div className="iv-chart-key">
-        <span>
-          <i className="main" />
-          This reel
-        </span>
-        <span>
-          <i />
-          Your typical reel
-        </span>
-      </div>
-      <InfoTitle>What affects your views</InfoTitle>
-      <p className="iv-muted">Rates are listed in order of importance to reach.</p>
-      <div className="iv-rate-list">
-        {rates.map(([Icon, label, value]) => (
-          <div key={label}>
-            <span>
-              <Icon />
-            </span>
-            <strong>{label}</strong>
-            <b>{value}</b>
+        <div className="iv-card">
+          <span className="iv-card-label">Follows</span>
+          <strong className="iv-card-val">0</strong>
+        </div>
+      </section>
+
+      {/* Views Over Time */}
+      <section className="iv-section">
+        <InfoTitle>Views over time</InfoTitle>
+        <div className="iv-filter-pills" role="tablist">
+          <button
+            type="button"
+            className={viewsFilter === "all" ? "active" : ""}
+            onClick={() => setViewsFilter("all")}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            className={viewsFilter === "followers" ? "active" : ""}
+            onClick={() => setViewsFilter("followers")}
+          >
+            Followers
+          </button>
+          <button
+            type="button"
+            className={viewsFilter === "non-followers" ? "active" : ""}
+            onClick={() => setViewsFilter("non-followers")}
+          >
+            Non-followers
+          </button>
+        </div>
+
+        <div className="iv-chart-container">
+          <div className="iv-chart-y-axis">
+            <span>100K</span>
+            <span>50K</span>
+            <span>0</span>
           </div>
-        ))}
-      </div>
-    </section>
-  );
-}
+          <div className="iv-chart-area">
+            <svg viewBox="0 0 340 120" preserveAspectRatio="none" className="iv-views-svg">
+              <line x1="0" y1="10" x2="340" y2="10" className="iv-grid-line" />
+              <line x1="0" y1="60" x2="340" y2="60" className="iv-grid-line" />
+              <line x1="0" y1="110" x2="340" y2="110" className="iv-grid-line" />
+              {/* Typical reel dashed curve */}
+              <path
+                d="M 5 110 Q 50 70, 120 56 T 240 45 T 335 40"
+                className="iv-typical-curve"
+                fill="none"
+              />
+              {/* This reel magenta curve */}
+              <path
+                d="M 5 110 L 25 100 L 90 99 L 180 99 L 260 99"
+                className="iv-reel-curve"
+                fill="none"
+              />
+            </svg>
+            <div className="iv-chart-x-axis">
+              <span>Aug 8</span>
+              <span>Aug 15</span>
+              <span>Aug 22</span>
+            </div>
+          </div>
+        </div>
 
-function AudienceView() {
-  const ages = [
-    ["13–17", "7.6%", 8],
-    ["18–24", "47.7%", 48],
-    ["25–34", "37.0%", 37],
-    ["35–44", "5.9%", 6],
-    ["45–54", "1.1%", 1],
-    ["55–64", "0.2%", 0.5],
-    ["65+", "0", 0],
-  ] as const;
-  return (
-    <>
-      <section className="iv-section iv-audience">
-        <InfoTitle>Who viewed your reel</InfoTitle>
-        <AudienceBar label="Followers" value="5.8%" width={6} />
-        <AudienceBar label="Non-followers" value="94.2%" width={94} purple />
-        <InfoTitle>Audience details</InfoTitle>
-        <div className="iv-filter-row">
-          <button className="active">Age</button>
-          <button>Country</button>
-          <button>Gender</button>
-        </div>
-        <div className="iv-age-list">
-          {ages.map(([label, value, width]) => (
-            <AudienceBar key={label} label={label} value={value} width={width} />
-          ))}
-        </div>
-        <div className="iv-country">
-          <AudienceBar label="Nepal" value="0.3%" width={0.6} />
-          <AudienceBar label="Colombia" value="0.2%" width={0.4} />
+        <div className="iv-chart-legend">
+          <span className="iv-legend-item">
+            <i className="dot magenta" />
+            This reel
+          </span>
+          <span className="iv-legend-item">
+            <i className="dot dashed" />
+            Your typical reel
+          </span>
         </div>
       </section>
-      <section className="iv-section iv-active-times">
-        <InfoTitle>Follower active times</InfoTitle>
-        <p className="iv-muted">Based on your current time zone (GMT+5:30)</p>
-        <div className="iv-days">
-          {["Su", "M", "Tu", "W", "Th", "F", "Sa"].map((day, i) => (
-            <button className={i === 0 ? "active" : ""} key={day}>
-              {day}
-            </button>
-          ))}
-        </div>
-        <div className="iv-columns">
-          {[15, 20, 66, 72, 78, 76, 88, 60].map((height, i) => (
-            <i style={{ height: `${height}%` }} key={i} />
-          ))}
-        </div>
-        <div className="iv-hours">
-          {["12a", "3a", "6a", "9a", "12p", "3p", "6p", "9p"].map((hour) => (
-            <span key={hour}>{hour}</span>
-          ))}
-        </div>
-        <h3>When followers are most active</h3>
-        {[
-          ["Mondays", "18–21"],
-          ["Tuesdays", "18–21"],
-          ["Wednesdays", "18–21"],
-        ].map(([day, time]) => (
-          <p className="iv-active-day" key={day}>
-            <b>{day}</b>
-            <span>{time}</span>
-          </p>
-        ))}
-      </section>
-    </>
-  );
-}
 
-function AudienceBar({
-  label,
-  value,
-  width,
-  purple = false,
-}: {
-  label: string;
-  value: string;
-  width: number;
-  purple?: boolean;
-}) {
-  return (
-    <div className="iv-audience-row">
-      <span>{label}</span>
-      <b>{value}</b>
-      <div>
-        <i className={purple ? "purple" : ""} style={{ width: `${Math.max(width, 0.4)}%` }} />
-      </div>
+      {/* What impacts your views */}
+      <section className="iv-section">
+        <InfoTitle>What impacts your views</InfoTitle>
+        <p className="iv-section-sub">Rates are listed in order of importance to reach.</p>
+        <div className="iv-rates-list">
+          {impactRates.map(({ Icon, label, rate, status }) => (
+            <div className="iv-rate-row" key={label}>
+              <div className="iv-rate-badge">
+                <Icon size={20} strokeWidth={1.9} />
+              </div>
+              <span className="iv-rate-label">{label}</span>
+              <div className="iv-rate-right">
+                <strong className="iv-rate-pct">{rate}</strong>
+                <span className="iv-rate-tag green">{status}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* How long people watched your reel */}
+      <section className="iv-section">
+        <InfoTitle>How long people watched your reel</InfoTitle>
+        <div className="iv-video-card-wrap">
+          <div className="iv-video-card">
+            <img src={reelMachine} alt="Video preview" width={110} height={165} />
+            <div className="iv-video-play-badge">
+              <Play size={20} fill="#ffffff" stroke="#ffffff" />
+            </div>
+          </div>
+        </div>
+
+        <div className="iv-chart-container">
+          <div className="iv-chart-y-axis">
+            <span>100%</span>
+            <span>50%</span>
+            <span>0</span>
+          </div>
+          <div className="iv-chart-area">
+            <svg viewBox="0 0 340 100" preserveAspectRatio="none" className="iv-retention-svg">
+              <line x1="0" y1="10" x2="340" y2="10" className="iv-grid-line" />
+              <line x1="0" y1="50" x2="340" y2="50" className="iv-grid-line" />
+              <line x1="0" y1="90" x2="340" y2="90" className="iv-grid-line" />
+              {/* Retention curve */}
+              <path
+                d="M 5 10 L 45 22 L 95 30 L 115 70 L 155 75 L 210 80 L 260 85 L 335 88"
+                className="iv-reel-curve"
+                fill="none"
+              />
+            </svg>
+            <div className="iv-chart-x-axis">
+              <span>0:00</span>
+              <span>0:13</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Top sources of views */}
+      <section className="iv-section no-border">
+        <InfoTitle>Top sources of views</InfoTitle>
+        <div className="iv-sources-list">
+          {viewSources.map(({ label, pct, width }) => (
+            <div className="iv-source-row" key={label}>
+              <span className="iv-source-label">{label}</span>
+              <div className="iv-source-bar-row">
+                <div className="iv-progress-track">
+                  <div className="iv-progress-fill" style={{ width: `${width}%` }} />
+                </div>
+                <strong className="iv-source-pct">{pct}</strong>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
 
-function EngagementView() {
-  const activities = [
-    { Icon: UserRound, label: "Profile visits", value: "1,649" },
-    { Icon: ExternalLink, label: "Bio link taps", value: "4" },
-    { Icon: Store, label: "Business address taps", value: "0" },
+function EngagementTab() {
+  const interactions = [
+    { label: "Likes", val: "368" },
+    { label: "Comments", val: "10" },
+    { label: "Reposts", val: "4" },
+    { label: "Shares", val: "4" },
+    { label: "Saves", val: "0" },
   ];
+
+  const profileActivities = [
+    { label: "Profile visits", val: "1,649" },
+    { label: "Follows", val: "0" },
+    { label: "Bio link taps", val: "4" },
+  ];
+
   return (
-    <>
-      <InteractionSummary />
-      <RetentionSection />
-      <section className="iv-section iv-profile-activity">
-        <InfoTitle>Profile activity</InfoTitle>
-        {activities.map(({ Icon, label, value }) => (
-          <div className="iv-activity-row" key={label}>
-            <span>
-              <Icon />
-            </span>
-            <strong>{label}</strong>
-            <b>{value}</b>
-          </div>
-        ))}
+    <div className="iv-tab-content">
+      <section className="iv-section">
+        <InfoTitle>Interactions</InfoTitle>
+        <div className="iv-list-table">
+          {interactions.map(({ label, val }) => (
+            <div className="iv-table-row" key={label}>
+              <span>{label}</span>
+              <strong>{val}</strong>
+            </div>
+          ))}
+        </div>
       </section>
-    </>
+
+      <section className="iv-section no-border">
+        <InfoTitle>Profile activity</InfoTitle>
+        <div className="iv-list-table">
+          {profileActivities.map(({ label, val }) => (
+            <div className="iv-table-row" key={label}>
+              <span>{label}</span>
+              <strong>{val}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function AudienceTab() {
+  const [detailTab, setDetailTab] = useState<AudienceDetailTab>("country");
+
+  const countryData: AudienceItem[] = [
+    { label: "United States", pct: "33.4%", width: 33.4 },
+    { label: "India", pct: "30.6%", width: 30.6 },
+    { label: "Brazil", pct: "7.4%", width: 7.4 },
+    { label: "Indonesia", pct: "2.4%", width: 2.4 },
+    { label: "Canada", pct: "2.4%", width: 2.4 },
+  ];
+
+  const ageData: AudienceItem[] = [
+    { label: "13-17", pct: "5.4%", width: 5.4 },
+    { label: "18-24", pct: "42.3%", width: 42.3 },
+    { label: "25-34", pct: "36.9%", width: 36.9 },
+    { label: "35-44", pct: "9.5%", width: 9.5 },
+    { label: "45-54", pct: "3.1%", width: 3.1 },
+    { label: "55-64", pct: "1.3%", width: 1.3 },
+    { label: "65+", pct: "1.5%", width: 1.5 },
+  ];
+
+  const genderData: AudienceItem[] = [
+    { label: "Men", pct: "84.2%", width: 84.2 },
+    { label: "Women", pct: "15.8%", width: 15.8, purple: true },
+  ];
+
+  const currentDetails =
+    detailTab === "country" ? countryData : detailTab === "age" ? ageData : genderData;
+
+  return (
+    <div className="iv-tab-content">
+      {/* Who viewed your reel */}
+      <section className="iv-section">
+        <InfoTitle>Who viewed your reel</InfoTitle>
+        <div className="iv-sources-list">
+          <div className="iv-source-row">
+            <span className="iv-source-label">Followers</span>
+            <div className="iv-source-bar-row">
+              <div className="iv-progress-track">
+                <div className="iv-progress-fill magenta" style={{ width: "20.9%" }} />
+              </div>
+              <strong className="iv-source-pct">20.9%</strong>
+            </div>
+          </div>
+          <div className="iv-source-row">
+            <span className="iv-source-label">Non-followers</span>
+            <div className="iv-source-bar-row">
+              <div className="iv-progress-track">
+                <div className="iv-progress-fill purple" style={{ width: "79.1%" }} />
+              </div>
+              <strong className="iv-source-pct">79.1%</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Audience details */}
+      <section className="iv-section no-border">
+        <InfoTitle>Audience details</InfoTitle>
+        <div className="iv-filter-pills" role="tablist">
+          <button
+            type="button"
+            className={detailTab === "age" ? "active" : ""}
+            onClick={() => setDetailTab("age")}
+          >
+            Age
+          </button>
+          <button
+            type="button"
+            className={detailTab === "country" ? "active" : ""}
+            onClick={() => setDetailTab("country")}
+          >
+            Country
+          </button>
+          <button
+            type="button"
+            className={detailTab === "gender" ? "active" : ""}
+            onClick={() => setDetailTab("gender")}
+          >
+            Gender
+          </button>
+        </div>
+
+        <div className="iv-sources-list">
+          {currentDetails.map((item) => (
+            <div className="iv-source-row" key={item.label}>
+              <span className="iv-source-label">{item.label}</span>
+              <div className="iv-source-bar-row">
+                <div className="iv-progress-track">
+                  <div
+                    className={`iv-progress-fill ${item.purple ? "purple" : "magenta"}`}
+                    style={{ width: `${item.width}%` }}
+                  />
+                </div>
+                <strong className="iv-source-pct">{item.pct}</strong>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 
 function InsightViewPage() {
   const [tab, setTab] = useState<Tab>("overview");
+
   return (
     <main className="iv-page">
-      <div className="iv-phone pb-24">
+      <div className="iv-phone pb-28">
         <InsightHeader />
-        <ReelStrip />
+        <ReelPreviewAndMetrics />
         <Tabs current={tab} onChange={setTab} />
-        {tab === "overview" ? (
-          <>
-            <InteractionSummary />
-            <RetentionSection />
-            <PerformanceSection />
-          </>
-        ) : null}
-        {tab === "engagement" ? <EngagementView /> : null}
-        {tab === "audience" ? <AudienceView /> : null}
+        {tab === "overview" && <OverviewTab />}
+        {tab === "engagement" && <EngagementTab />}
+        {tab === "audience" && <AudienceTab />}
         <FloatingBottomNav />
       </div>
     </main>
