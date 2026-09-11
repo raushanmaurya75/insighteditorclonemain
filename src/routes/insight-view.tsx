@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   Bookmark,
   ChevronLeft,
+  ChevronRight,
   Clock3,
   Heart,
   Info,
@@ -152,15 +153,26 @@ function OverviewTab() {
 
   return (
     <div className="iv-tab-content">
-      {/* Stat Cards */}
-      <section className="iv-stat-cards">
-        <div className="iv-card">
-          <span className="iv-card-label">Average watch time</span>
-          <strong className="iv-card-val">13s</strong>
-        </div>
-        <div className="iv-card">
-          <span className="iv-card-label">Follows</span>
-          <strong className="iv-card-val">0</strong>
+      {/* Summary with 4 Stat Cards */}
+      <section className="iv-section">
+        <InfoTitle>Summary</InfoTitle>
+        <div className="iv-summary-grid">
+          <div className="iv-card">
+            <span className="iv-card-label">Views</span>
+            <strong className="iv-card-val">12,910</strong>
+          </div>
+          <div className="iv-card">
+            <span className="iv-card-label">Viewers</span>
+            <strong className="iv-card-val">4,168</strong>
+          </div>
+          <div className="iv-card">
+            <span className="iv-card-label">Average watch time</span>
+            <strong className="iv-card-val">13s</strong>
+          </div>
+          <div className="iv-card">
+            <span className="iv-card-label">Follows</span>
+            <strong className="iv-card-val">0</strong>
+          </div>
         </div>
       </section>
 
@@ -294,7 +306,7 @@ function OverviewTab() {
       </section>
 
       {/* Top sources of views */}
-      <section className="iv-section no-border">
+      <section className="iv-section">
         <InfoTitle>Top sources of views</InfoTitle>
         <div className="iv-sources-list">
           {viewSources.map(({ label, pct, width }) => (
@@ -310,6 +322,18 @@ function OverviewTab() {
           ))}
         </div>
       </section>
+
+      {/* Ad Section */}
+      <section className="iv-section iv-ad-section no-border">
+        <h3 className="iv-ad-title">Ad</h3>
+        <button type="button" className="iv-ad-boost-row">
+          <div className="iv-ad-boost-left">
+            <TrendingUp size={20} strokeWidth={2.2} />
+            <span>Boost this reel</span>
+          </div>
+          <ChevronRight size={18} strokeWidth={2.2} />
+        </button>
+      </section>
     </div>
   );
 }
@@ -323,14 +347,15 @@ function EngagementTab() {
     { label: "Saves", val: "0" },
   ];
 
-  const profileActivities = [
-    { label: "Profile visits", val: "1,649" },
-    { label: "Follows", val: "0" },
-    { label: "Bio link taps", val: "4" },
-  ];
-
   return (
     <div className="iv-tab-content">
+      {/* Top follows row */}
+      <div className="iv-follows-row">
+        <span className="iv-follows-label">Follows</span>
+        <strong className="iv-follows-val">0</strong>
+      </div>
+
+      {/* Interactions list */}
       <section className="iv-section">
         <InfoTitle>Interactions</InfoTitle>
         <div className="iv-list-table">
@@ -343,15 +368,41 @@ function EngagementTab() {
         </div>
       </section>
 
+      {/* When people liked your reel */}
       <section className="iv-section no-border">
-        <InfoTitle>Profile activity</InfoTitle>
-        <div className="iv-list-table">
-          {profileActivities.map(({ label, val }) => (
-            <div className="iv-table-row" key={label}>
-              <span>{label}</span>
-              <strong>{val}</strong>
+        <InfoTitle>When people liked your reel</InfoTitle>
+        <div className="iv-video-card-wrap">
+          <div className="iv-video-card">
+            <img src={reelMachine} alt="Video preview" width={110} height={165} />
+            <div className="iv-video-play-badge">
+              <Play size={20} fill="#ffffff" stroke="#ffffff" />
             </div>
-          ))}
+          </div>
+        </div>
+
+        <div className="iv-chart-container">
+          <div className="iv-chart-y-axis">
+            <span>20%</span>
+            <span>10%</span>
+            <span>0</span>
+          </div>
+          <div className="iv-chart-area">
+            <svg viewBox="0 0 340 100" preserveAspectRatio="none" className="iv-retention-svg">
+              <line x1="0" y1="10" x2="340" y2="10" className="iv-grid-line" />
+              <line x1="0" y1="50" x2="340" y2="50" className="iv-grid-line" />
+              <line x1="0" y1="90" x2="340" y2="90" className="iv-grid-line" />
+              {/* Liked curve from page 4.jpeg */}
+              <path
+                d="M 5 45 L 35 20 L 70 52 L 95 60 L 130 80 L 160 52 L 205 60 L 235 84 L 270 96 L 305 92 L 335 86"
+                className="iv-reel-curve"
+                fill="none"
+              />
+            </svg>
+            <div className="iv-chart-x-axis">
+              <span>0:00</span>
+              <span>0:13</span>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -380,8 +431,8 @@ function AudienceTab() {
   ];
 
   const genderData: AudienceItem[] = [
-    { label: "Men", pct: "84.2%", width: 84.2 },
-    { label: "Women", pct: "15.8%", width: 15.8, purple: true },
+    { label: "Men", pct: "81.9%", width: 81.9 },
+    { label: "Women", pct: "18.1%", width: 18.1, purple: true },
   ];
 
   const currentDetails =
