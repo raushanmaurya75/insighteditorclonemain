@@ -1,210 +1,125 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  IgChevronDown,
-  IgDashboard,
-  IgDiscord,
-  IgGrid,
-  IgHome,
-  IgLink,
-  IgMenu,
-  IgMessages,
-  IgPlayCount,
-  IgPlus,
-  IgReels,
-  IgRepost,
-  IgSearch,
-  IgTagged,
-  IgVerified,
-} from "@/components/ig-icons";
-import profilePhoto from "@/assets/profile-photo.jpg";
-import reelRoad from "@/assets/reel-road.jpg";
-import reelCasino from "@/assets/reel-casino.jpg";
-import reelMachine from "@/assets/reel-machine.jpg";
+import { IgHeart, IgMore, IgMusic, IgMuted, IgPlus } from "@/components/ig-icons";
+import { FloatingBottomNav } from "@/components/floating-bottom-nav";
+import storySelfie from "@/assets/home-story-selfie.jpg";
+import storyMan from "@/assets/home-story-man.jpg";
+import storyPerfume from "@/assets/home-story-perfume.jpg";
+import storyPackaging from "@/assets/home-story-packaging.jpg";
+import riverPost from "@/assets/home-river.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "btwdorian — Profile" },
+      { title: "Instagram Home Feed" },
       {
         name: "description",
-        content: "Dorian Divizev's social profile and latest videos.",
+        content: "Instagram-style home feed with stories, reels and profile.",
       },
-      { property: "og:title", content: "btwdorian — Profile" },
+      { property: "og:title", content: "Instagram Home Feed" },
       {
         property: "og:description",
-        content: "Dorian Divizev's social profile and latest videos.",
+        content: "Instagram-style home feed with stories, reels and profile.",
       },
-      { property: "og:type", content: "profile" },
+      { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: ProfilePage,
+  component: HomeFeedPage,
 });
 
-const reels = [
-  {
-    image: reelRoad,
-    text: "POV: the type of place bro takes you after you go 0/4 on ur parlays",
-    views: "37.6K",
-  },
-  {
-    image: reelCasino,
-    text: "POV: How it feels knowing you discovered the ultimate spot",
-    views: "22.9K",
-  },
-  {
-    image: reelMachine,
-    text: "POV: You grab the machine before they say who just blew his paycheck",
-    views: "143K",
-  },
+const stories = [
+  { name: "Your story", image: storySelfie, own: true, to: "/profile" },
+  { name: "4276_official_b...", image: storyMan, own: false, to: "/insight-view" },
+  { name: "scentedbyshubh", image: storyPerfume, own: false, to: "/dashboard" },
+  { name: "rg_packaging", image: storyPackaging, own: false, to: "/insights" },
 ];
 
-function ProfilePage() {
+function InstagramMark() {
+  return <span className="feed-wordmark">Instagram</span>;
+}
+
+function HomeFeedPage() {
   return (
-    <main className="min-h-screen bg-page text-ink">
-      <div className="phone-shell">
-        <nav className="profile-nav" aria-label="Profile navigation">
-          <button aria-label="Create">
+    <main className="feed-page">
+      <div className="feed-phone">
+        <header className="feed-header">
+          <Link
+            to="/insight-view"
+            aria-label="Create reel / View Insights"
+            title="Reels & Insights"
+          >
             <IgPlus />
-          </button>
-          <button className="handle">
-            btwdorian <IgChevronDown />
-            <i />
-          </button>
-          <button aria-label="Menu">
-            <IgMenu />
-          </button>
-        </nav>
-
-        <section className="profile-summary">
-          <div className="profile-top">
-            <div className="avatar-wrap">
-              <div className="note">
-                Obsessed
-                <br />
-                with...
-              </div>
-              <div className="avatar-ring">
-                <img src={profilePhoto} alt="Dorian Divizev" width={512} height={512} />
-              </div>
-              <span className="avatar-add">
-                <IgPlus />
-              </span>
-            </div>
-            <div className="identity-stats">
-              <div className="display-name">
-                Dorian Divizev <IgVerified size={18} className="verified" />
-              </div>
-              <div className="stats">
-                <div>
-                  <b>42</b>
-                  <span>posts</span>
-                </div>
-                <div>
-                  <b>6,253</b>
-                  <span>followers</span>
-                </div>
-                <div>
-                  <b>939</b>
-                  <span>following</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bio">
-            <p className="category">Adult Entertainment Service</p>
-            <p>Gambling “POV GOD” ifykyk</p>
-            <p>sign up here ↓ for $1k giveaway at 10k 🎉</p>
-            <a href="https://shuffle.us/?r=btwdorian">
-              <IgLink /> shuffle.us/?r=btwdorian
-            </a>
-          </div>
-
-          <button className="add-banners">
-            <IgPlus /> Add banners
-          </button>
-
-          <Link to="/dashboard" className="dashboard">
-            <b>
-              <IgDashboard size={16} /> Professional dashboard
-            </b>
-            <span>1.6M views in the last 30 days.</span>
           </Link>
+          <InstagramMark />
+          <Link to="/insights" aria-label="Activity and Insights" title="Activity & Insights">
+            <IgHeart />
+          </Link>
+        </header>
 
-          <div className="edit-actions">
-            <button>Edit profile</button>
-            <button>Share profile</button>
-          </div>
-        </section>
-
-        <section className="highlights" aria-label="Story highlights">
-          <button className="highlight">
-            <span className="new-highlight">
-              <IgPlus />
-            </span>
-            <small>New</small>
-          </button>
-          <button className="highlight">
-            <span className="discord-highlight">
-              <IgDiscord />
-            </span>
-            <small>Degen Disci...</small>
-          </button>
-        </section>
-
-        <div className="content-tabs" role="tablist">
-          <button aria-label="Posts">
-            <IgGrid />
-          </button>
-          <button className="active" aria-label="Videos">
-            <IgReels />
-            <IgChevronDown />
-          </button>
-          <button aria-label="Reposts">
-            <IgRepost />
-          </button>
-          <button aria-label="Tagged">
-            <IgTagged />
-          </button>
-        </div>
-
-        <section className="reel-grid" aria-label="Video posts">
-          {reels.map((reel) => (
-            <button className="reel" key={reel.views}>
-              <img
-                src={reel.image}
-                alt="Video thumbnail"
-                width={768}
-                height={1024}
-                loading="lazy"
-              />
-              <span className="reel-copy">{reel.text}</span>
-              <span className="view-count">
-                <IgPlayCount />
-                {reel.views}
+        <section className="feed-stories" aria-label="Stories">
+          {stories.map((story) => (
+            <Link
+              to={story.to}
+              className="feed-story text-inherit no-underline"
+              key={story.name}
+              title={story.name}
+            >
+              <span className={story.own ? "feed-story-ring own" : "feed-story-ring"}>
+                <img src={story.image} alt="" width={512} height={512} loading="lazy" />
+                {story.own ? (
+                  <i>
+                    <IgPlus />
+                  </i>
+                ) : null}
               </span>
-            </button>
+              <small>{story.name}</small>
+            </Link>
           ))}
         </section>
 
-        <nav className="bottom-nav" aria-label="Main navigation">
-          <button aria-label="Home">
-            <IgHome />
+        <article className="feed-post">
+          <img
+            className="feed-post-image"
+            src={riverPost}
+            alt="River and city skyline on a hazy day"
+            width={768}
+            height={1365}
+          />
+          <div className="feed-post-shade" />
+          <header className="feed-post-head">
+            <Link to="/profile" className="feed-author-avatar" title="View Profile">
+              <img src={storyMan} alt="" width={512} height={512} />
+            </Link>
+            <div>
+              <Link to="/profile" className="text-inherit no-underline" title="View Profile">
+                <strong>
+                  4276_official_bharat<span className="feed-follow">/21k</span>
+                </strong>
+              </Link>
+              <Link
+                to="/insight-view"
+                className="text-inherit no-underline"
+                title="View Audio & Reel Insights"
+              >
+                <span>
+                  <IgMusic /> nBeats · Sonido De Alarma Molesto
+                </span>
+              </Link>
+            </div>
+            <Link to="/dashboard" aria-label="Dashboard options" title="Creator Dashboard">
+              <IgMore />
+            </Link>
+          </header>
+          <div className="feed-post-copy" aria-hidden="true">
+            <b>9/9/2026</b>
+            <strong>पुनपुन नदी चढ़ी</strong>
+          </div>
+          <button type="button" aria-label="Mute video" className="feed-mute">
+            <IgMuted />
           </button>
-          <button aria-label="Reels">
-            <IgReels />
-          </button>
-          <button aria-label="Messages">
-            <IgMessages />
-          </button>
-          <button aria-label="Search">
-            <IgSearch />
-          </button>
-          <button aria-label="Profile" className="mini-profile">
-            <img src={profilePhoto} alt="" width={512} height={512} />
-          </button>
-        </nav>
+        </article>
+
+        <FloatingBottomNav />
       </div>
     </main>
   );

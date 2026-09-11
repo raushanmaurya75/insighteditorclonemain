@@ -11,6 +11,7 @@ import {
   TrendingUp,
   UserRoundCheck,
 } from "lucide-react";
+import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -35,9 +36,9 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 const insights = [
-  { label: "Views", value: "1.6M" },
-  { label: "New followers", value: "286" },
-  { label: "Content you shared", value: "37" },
+  { label: "Views", value: "1.6M", to: "/insights" },
+  { label: "New followers", value: "286", to: "/insights" },
+  { label: "Content you shared", value: "37", to: "/insights" },
 ];
 
 const TrialReels = (props: { className?: string }) => (
@@ -56,43 +57,60 @@ const TrialReels = (props: { className?: string }) => (
 );
 
 const tools = [
-  { label: "Monthly recap", icon: History },
-  { label: "Best practices", icon: GraduationCap },
-  { label: "Inspiration", icon: Lightbulb },
-  { label: "Ad tools", icon: TrendingUp },
-  { label: "Trial reels", icon: TrialReels },
-  { label: "Partnership ads", icon: UserRoundCheck },
-  { label: "Gifts", icon: Gift },
-  { label: "Saved replies", icon: Send },
+  { label: "Monthly recap", icon: History, to: "/insights" },
+  { label: "Best practices", icon: GraduationCap, to: "/insights" },
+  { label: "Inspiration", icon: Lightbulb, to: "/insights" },
+  { label: "Ad tools", icon: TrendingUp, to: "/insights" },
+  { label: "Trial reels", icon: TrialReels, to: "/insight-view" },
+  { label: "Partnership ads", icon: UserRoundCheck, to: "/insights" },
+  { label: "Gifts", icon: Gift, to: "/insights" },
+  { label: "Saved replies", icon: Send, to: "/insights" },
 ];
 
 function DashboardPage() {
   return (
     <main className="min-h-screen bg-page text-ink">
-      <div className="phone-shell">
+      <div className="phone-shell pb-24">
         <header className="dash-nav">
-          <Link to="/" aria-label="Back" className="dash-round">
+          <Link
+            to="/profile"
+            aria-label="Back to profile"
+            className="dash-round"
+            title="Back to profile"
+          >
             <ChevronLeft />
           </Link>
           <h1>Professional dashboard</h1>
-          <button type="button" aria-label="Settings" className="dash-round">
+          <Link
+            to="/insights"
+            aria-label="Settings / Insights"
+            className="dash-round"
+            title="Settings"
+          >
             <Settings />
-          </button>
+          </Link>
         </header>
 
         <section className="dash-block">
-          <div className="dash-head">
+          <Link
+            to="/insights"
+            className="dash-head text-inherit no-underline"
+            title="View detailed account insights"
+          >
             <h2>Insights</h2>
             <span>Jul 20 - Aug 18</span>
-          </div>
+          </Link>
           <ul className="dash-list">
             {insights.map((row) => (
               <li key={row.label}>
-                <button type="button">
+                <Link
+                  to={row.to}
+                  className="w-full flex items-center justify-between text-inherit no-underline py-2.5"
+                >
                   <span className="dash-label">{row.label}</span>
                   <span className="dash-value">{row.value}</span>
                   <ChevronRight className="dash-caret" />
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
@@ -105,19 +123,24 @@ function DashboardPage() {
             <h2>Your tools</h2>
           </div>
           <ul className="dash-list tools">
-            {tools.map(({ label, icon: Icon }) => (
+            {tools.map(({ label, icon: Icon, to }) => (
               <li key={label}>
-                <button type="button">
+                <Link
+                  to={to}
+                  className="w-full flex items-center justify-between text-inherit no-underline py-2.5"
+                >
                   <Icon className="tool-icon" />
                   <span className="dash-label">{label}</span>
                   <ChevronRight className="dash-caret big" />
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
         </section>
 
         <div className="dash-divider" />
+
+        <FloatingBottomNav />
       </div>
     </main>
   );

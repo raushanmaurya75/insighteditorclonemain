@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronDown,
   ChevronLeft,
@@ -11,6 +11,7 @@ import {
   SquareArrowOutUpRight,
   UserRound,
 } from "lucide-react";
+import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelRoad from "@/assets/reel-road.jpg";
 import reelCasino from "@/assets/reel-casino.jpg";
 import reelMachine from "@/assets/reel-machine.jpg";
@@ -87,15 +88,25 @@ function Legend() {
 function InsightsPage() {
   return (
     <main className="min-h-screen bg-page text-ink">
-      <div className="phone-shell">
+      <div className="phone-shell pb-24">
         <header className="dash-nav">
-          <button type="button" aria-label="Back" className="dash-round">
+          <Link
+            to="/dashboard"
+            aria-label="Back to dashboard"
+            className="dash-round"
+            title="Back to dashboard"
+          >
             <ChevronLeft />
-          </button>
+          </Link>
           <h1>Insights</h1>
-          <button type="button" aria-label="Information" className="dash-round">
+          <Link
+            to="/insight-view"
+            aria-label="Reel insights"
+            className="dash-round"
+            title="Detailed Reel Insights"
+          >
             <Info />
-          </button>
+          </Link>
         </header>
 
         <div className="in-tabs" role="tablist">
@@ -116,14 +127,19 @@ function InsightsPage() {
 
           <div className="in-cards">
             {summaryCards.map((card) => (
-              <button
-                type="button"
+              <Link
+                to="/insight-view"
                 key={card.label}
-                className={card.active ? "in-card active" : "in-card"}
+                className={
+                  card.active
+                    ? "in-card active text-inherit no-underline"
+                    : "in-card text-inherit no-underline"
+                }
+                title="View metric details"
               >
                 <span>{card.label}</span>
                 <b>{card.value}</b>
-              </button>
+              </Link>
             ))}
           </div>
 
@@ -163,24 +179,34 @@ function InsightsPage() {
           </div>
           <Legend />
           {viewBars.map((bar) => (
-            <div className="in-bar" key={bar.label}>
+            <Link
+              to="/insight-view"
+              className="in-bar text-inherit no-underline"
+              key={bar.label}
+              title="View Reel breakdown"
+            >
               <span className="in-bar-label">{bar.label}</span>
               <div className="in-track">
                 <i style={{ width: `${bar.pct}%` }} />
               </div>
               <span className="in-bar-value">{bar.value}</span>
-            </div>
+            </Link>
           ))}
         </section>
 
         <div className="in-thumbs">
           {thumbs.map((thumb, i) => (
-            <button type="button" className="in-thumb" key={`${thumb.views}-${i}`}>
+            <Link
+              to="/insight-view"
+              className="in-thumb"
+              key={`${thumb.views}-${i}`}
+              title="View Reel breakdown"
+            >
               <img src={thumb.image} alt="Post thumbnail" width={300} height={200} loading="lazy" />
               <span>
                 <Eye /> {thumb.views}
               </span>
-            </button>
+            </Link>
           ))}
         </div>
 
@@ -228,6 +254,8 @@ function InsightsPage() {
             ))}
           </ul>
         </section>
+
+        <FloatingBottomNav />
       </div>
     </main>
   );

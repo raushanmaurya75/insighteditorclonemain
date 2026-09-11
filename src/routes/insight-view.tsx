@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Bookmark,
@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Clock3,
 } from "lucide-react";
+import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
 import reelCasino from "@/assets/reel-casino.jpg";
 import reelRoad from "@/assets/reel-road.jpg";
@@ -71,13 +72,23 @@ function InsightHeader() {
         </span>
       </div>
       <header className="iv-header">
-        <button type="button" aria-label="Back">
+        <Link
+          to="/insights"
+          aria-label="Back to insights"
+          title="Back to insights"
+          className="text-inherit no-underline"
+        >
           <ChevronLeft />
-        </button>
+        </Link>
         <h1>Insights</h1>
-        <button type="button" aria-label="Information">
+        <Link
+          to="/dashboard"
+          aria-label="Professional Dashboard"
+          title="Dashboard"
+          className="text-inherit no-underline"
+        >
           <Info />
-        </button>
+        </Link>
       </header>
     </>
   );
@@ -357,7 +368,7 @@ function InsightViewPage() {
   const [tab, setTab] = useState<Tab>("overview");
   return (
     <main className="iv-page">
-      <div className="iv-phone">
+      <div className="iv-phone pb-24">
         <InsightHeader />
         <ReelStrip />
         <Tabs current={tab} onChange={setTab} />
@@ -370,6 +381,7 @@ function InsightViewPage() {
         ) : null}
         {tab === "engagement" ? <EngagementView /> : null}
         {tab === "audience" ? <AudienceView /> : null}
+        <FloatingBottomNav />
       </div>
     </main>
   );
