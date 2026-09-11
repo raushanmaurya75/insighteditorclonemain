@@ -19,7 +19,7 @@ export function FloatingBottomNav({ className }: FloatingBottomNavProps) {
   return (
     <nav className={`bottom-nav ${className ?? ""}`.trim()} aria-label="Main navigation">
       <Link to="/" className={isHome ? "current" : ""} aria-label="Home Feed" title="Home Feed">
-        <IgHome />
+        <IgHome active={isHome} />
       </Link>
       <Link
         to="/insight-view"
@@ -27,7 +27,7 @@ export function FloatingBottomNav({ className }: FloatingBottomNavProps) {
         aria-label="Reels"
         title="Reels"
       >
-        <IgReels />
+        <IgReels active={isReels} />
       </Link>
       <Link
         to="/dashboard"
@@ -35,7 +35,7 @@ export function FloatingBottomNav({ className }: FloatingBottomNavProps) {
         aria-label="Dashboard"
         title="Dashboard"
       >
-        <IgMessages />
+        <IgMessages active={isDashboard} />
       </Link>
       <Link
         to="/insights"
@@ -43,7 +43,7 @@ export function FloatingBottomNav({ className }: FloatingBottomNavProps) {
         aria-label="Insights"
         title="Insights"
       >
-        <IgSearch />
+        <IgSearch active={isInsights} />
       </Link>
       <Link
         to="/profile"
