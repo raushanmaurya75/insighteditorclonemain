@@ -1,0 +1,7 @@
+{
+  "name": "instagram-iphone",
+  "description": "Instagram iPhone web experience built with React, Vite, and TanStack",
+  "version": "1.0.0",
+  "framework": "vite-react",
+  "createdAt": "2026-09-11T14:28:00.000Z"
+}
