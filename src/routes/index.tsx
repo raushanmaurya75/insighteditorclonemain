@@ -90,10 +90,6 @@ function HomeFeedPage() {
             <span className="feed-time">9:15</span>
           </div>
 
-          <div className="feed-dynamic-island" title="Dynamic Island">
-            <span className="feed-island-record-dot" />
-          </div>
-
           <div className="feed-status-right">
             {/* Cellular signal bars */}
             <svg
