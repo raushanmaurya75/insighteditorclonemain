@@ -1427,7 +1427,6 @@ button {
   position: sticky;
   top: 0;
   z-index: 20;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .feed-header-icon-btn {
@@ -1480,7 +1479,6 @@ button {
   padding: 8px 14px 12px;
   overflow-x: auto;
   scrollbar-width: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   background: #ffffff;
 }
 
@@ -1585,7 +1583,6 @@ button {
 /* Post Cards */
 .feed-post-card {
   background: #ffffff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   padding-bottom: 12px;
   position: relative;
 }
@@ -1937,7 +1934,6 @@ button {
   position: relative;
   width: 100%;
   background: #ffffff;
-  border-top: 1px solid #f0f0f0;
   overflow: hidden;
 }
 
