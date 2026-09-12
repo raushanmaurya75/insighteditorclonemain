@@ -82,45 +82,9 @@ function HomeFeedPage() {
   };
 
   return (
-    <main className="feed-page-wrapper">
-      <div className="feed-phone-frame">
-        {/* iOS iPhone Status Bar + Dynamic Island */}
-        <header className="feed-status-bar" aria-label="iPhone Status Bar">
-          <div className="feed-status-left">
-            <span className="feed-time">9:15</span>
-          </div>
-
-          <div className="feed-status-right">
-            {/* Cellular signal bars */}
-            <svg
-              className="feed-cell-icon"
-              viewBox="0 0 17 11"
-              fill="currentColor"
-              width="17"
-              height="11"
-              aria-label="Cellular signal"
-            >
-              <rect x="0" y="8" width="3" height="3" rx="0.6" />
-              <rect x="4.5" y="5.5" width="3" height="5.5" rx="0.6" />
-              <rect x="9" y="3" width="3" height="8" rx="0.6" />
-              <rect x="13.5" y="0" width="3" height="11" rx="0.6" />
-            </svg>
-
-            <span className="feed-network-text">5G</span>
-
-            {/* Battery pill with 69 inside */}
-            <div className="feed-battery-wrap" title="Battery 69%">
-              <span className="feed-battery-pct">69</span>
-              <div className="feed-battery-border">
-                <div className="feed-battery-fill" style={{ width: "69%" }} />
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Scrollable Feed Container */}
-        <div className="feed-scroll-body">
-          {/* Stories Horizontal Tray */}
+    <main className="min-h-screen bg-page text-ink">
+      <div className="phone-shell pb-24 feed-phone-shell">
+        {/* Stories Horizontal Tray */}
           <section className="feed-stories-tray" aria-label="Stories">
             {storiesData.map((story) => (
               <Link
@@ -530,12 +494,8 @@ function HomeFeedPage() {
             </div>
           </article>
 
-          {/* Bottom spacing so posts can be scrolled cleanly above floating navbar */}
-          <div className="feed-bottom-spacer" aria-hidden="true" />
-        </div>
-
         {/* Floating Frosted Glass Bottom Navigation Bar */}
-        <FloatingBottomNav className="feed-floating-nav" />
+        <FloatingBottomNav />
       </div>
     </main>
   );
