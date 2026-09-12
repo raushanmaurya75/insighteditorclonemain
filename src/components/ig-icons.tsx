@@ -466,7 +466,7 @@ export const IgTwoLines = (p: IconProps) => (
     <line
       x1="4"
       y1="15"
-      x2="20"
+      x2="14"
       y2="15"
       stroke="currentColor"
       strokeWidth="2.2"

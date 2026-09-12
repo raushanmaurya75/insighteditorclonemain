@@ -147,59 +147,59 @@ function HomeFeedPage() {
 
         {/* POST 1: Reel / Video Post (pakhi_art424) */}
         <article className="feed-post-card" aria-label="Post by pakhi_art424">
-          {/* Post Header */}
-          <div className="feed-post-header">
-            <Link to="/insight-view" className="feed-author-link" title="pakhi_art424">
-              <div className="feed-header-avatar">
-                <img src={nainaTarsemArt} alt="pakhi_art424" width={38} height={38} />
-              </div>
-              <div className="feed-header-meta">
-                <span className="feed-username">pakhi_art424</span>
-                <span className="feed-audio-sub">
-                  <svg
-                    width="11"
-                    height="11"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <line x1="7" y1="17" x2="17" y2="7" />
-                    <polyline points="7 7 17 7 17 17" />
-                  </svg>
-                  <span>Mohammed Rafi · Phirkiwali</span>
-                </span>
-              </div>
-            </Link>
-
-            <div className="feed-header-actions">
-              <button
-                type="button"
-                className={`feed-follow-btn ${post1Following ? "is-following" : ""}`}
-                onClick={() => setPost1Following(!post1Following)}
-              >
-                {post1Following ? "Following" : "Follow"}
-              </button>
-              <button
-                type="button"
-                className="feed-menu-btn"
-                aria-label="More options"
-                title="More options"
-              >
-                <IgTwoLines size={20} />
-              </button>
-            </div>
-          </div>
-
-          {/* Post Media - Vertical Illustration Artwork */}
+          {/* Post Media with Header Overlay */}
           <div
             className="feed-media-container"
             onDoubleClick={handleDoubleTapPost1}
             role="presentation"
           >
+            {/* Header Overlay on top of video/post */}
+            <div className="feed-post-header feed-post-header-overlay">
+              <Link to="/insight-view" className="feed-author-link" title="pakhi_art424">
+                <div className="feed-header-avatar">
+                  <img src={nainaTarsemArt} alt="pakhi_art424" width={38} height={38} />
+                </div>
+                <div className="feed-header-meta">
+                  <span className="feed-username">pakhi_art424</span>
+                  <span className="feed-audio-sub">
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <line x1="7" y1="17" x2="17" y2="7" />
+                      <polyline points="7 7 17 7 17 17" />
+                    </svg>
+                    <span>Mohammed Rafi · Phirkiwali</span>
+                  </span>
+                </div>
+              </Link>
+
+              <div className="feed-header-actions">
+                <button
+                  type="button"
+                  className={`feed-follow-btn ${post1Following ? "is-following" : ""}`}
+                  onClick={() => setPost1Following(!post1Following)}
+                >
+                  {post1Following ? "Following" : "Follow"}
+                </button>
+                <button
+                  type="button"
+                  className="feed-menu-btn"
+                  aria-label="More options"
+                  title="More options"
+                >
+                  <IgTwoLines size={20} />
+                </button>
+              </div>
+            </div>
+
             <img
               src={nainaTarsemArt}
               alt="Romantic artwork Naina Tarsem"
