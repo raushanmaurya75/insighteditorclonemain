@@ -91,15 +91,31 @@ function ReelPreviewAndMetrics() {
 
   return (
     <section className="iv-top-strip">
-      <div className="iv-thumb-wrap">
+      <Link
+        to="/post-view"
+        className="iv-thumb-wrap"
+        aria-label="View Reel post"
+        title="Watch Reel"
+      >
         <img
           src={reelMachine}
           alt="Reel preview"
-          width={240}
-          height={135}
+          width={118}
+          height={210}
           className="iv-thumb-img"
         />
-      </div>
+        <div className="iv-thumb-overlay">
+          <p>
+            POV: You grab the machine
+            <br />
+            before the guy who just blew
+            <br />
+            his paycheck can get back
+            <br />
+            from the ATM
+          </p>
+        </div>
+      </Link>
       <div className="iv-metric-icons">
         {reelMetrics.map(({ Icon, value }) => (
           <span key={value + Icon.displayName}>
