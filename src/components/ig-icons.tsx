@@ -426,3 +426,81 @@ export const IgBattery = (p: IconProps) => (
     <path d="M29 10.5v4a2.6 2.6 0 0 0 0-4Z" />
   </Svg>
 );
+
+export const IgComment = (p: IconProps) => (
+  <Svg {...p}>
+    <path
+      d="M20.656 17.008a9.993 9.993 0 1 0-3.59 3.615L22 22Z"
+      fill="none"
+      stroke="currentColor"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    />
+  </Svg>
+);
+
+export const IgBookmark = ({ active = false, ...p }: NavIconProps) => (
+  <Svg {...p}>
+    <polygon
+      fill={active ? "currentColor" : "none"}
+      points="20 21 12 13.44 4 21 4 3 20 3 20 21"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    />
+  </Svg>
+);
+
+export const IgTwoLines = (p: IconProps) => (
+  <Svg size={20} {...p}>
+    <line
+      x1="4"
+      y1="9"
+      x2="20"
+      y2="9"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    />
+    <line
+      x1="4"
+      y1="15"
+      x2="20"
+      y2="15"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const IgShare = (p: IconProps) => (
+  <Svg {...p}>
+    <line
+      x1="22"
+      y1="2"
+      x2="11"
+      y2="13"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <polygon
+      points="22 2 15 22 11 13 2 9 22 2"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const IgPersonTagged = (p: IconProps) => (
+  <Svg size={14} viewBox="0 0 24 24" fill="currentColor" {...p}>
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+  </Svg>
+);
+
