@@ -4,14 +4,16 @@ import {
   ChevronLeft,
   Camera,
   Search,
-  Heart,
-  MessageCircle,
-  Repeat2,
-  Send,
-  MoreHorizontal,
   Eye,
   TrendingUp,
 } from "lucide-react";
+import {
+  IgHeart,
+  IgComment,
+  IgRepost,
+  IgShare,
+  IgMore,
+} from "@/components/ig-icons";
 import reelMachine from "@/assets/reel-machine.jpg";
 import profilePhoto from "@/assets/profile-photo.jpg";
 import friendAvatar1 from "@/assets/home-story-man.jpg";
@@ -170,10 +172,9 @@ function PostViewPage() {
               onClick={toggleLike}
               aria-label="Like"
             >
-              <Heart
+              <IgHeart
                 size={28}
-                strokeWidth={liked ? 0 : 2}
-                fill={liked ? "#ff2d55" : "none"}
+                active={liked}
                 className={liked ? "heart-pop" : ""}
               />
             </button>
@@ -183,7 +184,7 @@ function PostViewPage() {
           {/* Comment */}
           <div className="pv-action-item">
             <button type="button" className="pv-action-btn" aria-label="Comments">
-              <MessageCircle size={28} strokeWidth={2} />
+              <IgComment size={28} />
             </button>
             <span className="pv-action-count">10</span>
           </div>
@@ -196,7 +197,7 @@ function PostViewPage() {
               onClick={toggleRepost}
               aria-label="Repost"
             >
-              <Repeat2 size={28} strokeWidth={2.1} color={reposted ? "#a855f7" : "currentColor"} />
+              <IgRepost size={28} color={reposted ? "#a855f7" : "currentColor"} />
             </button>
             <span className="pv-action-count">{repostCount}</span>
           </div>
@@ -204,7 +205,7 @@ function PostViewPage() {
           {/* Share */}
           <div className="pv-action-item">
             <button type="button" className="pv-action-btn" aria-label="Share">
-              <Send size={26} strokeWidth={2} className="-rotate-12" />
+              <IgShare size={26} />
             </button>
             <span className="pv-action-count">4</span>
           </div>
@@ -212,7 +213,7 @@ function PostViewPage() {
           {/* More options */}
           <div className="pv-action-item">
             <button type="button" className="pv-action-btn" aria-label="More options">
-              <MoreHorizontal size={26} strokeWidth={2} />
+              <IgMore size={26} />
             </button>
           </div>
 
@@ -231,7 +232,7 @@ function PostViewPage() {
           <div className="pv-bubbles-row">
             {/* Heart float badge */}
             <div className="pv-float-heart">
-              <Heart size={14} fill="#ff2d55" strokeWidth={0} />
+              <IgHeart size={14} active fill="#ff2d55" />
             </div>
 
             {/* Tag a friend pill */}
@@ -243,7 +244,7 @@ function PostViewPage() {
             <div className="pv-avatar-bubble">
               <img src={friendAvatar1} alt="Friend avatar" />
               <span className="pv-bubble-badge">
-                <Repeat2 size={10} strokeWidth={2.8} />
+                <IgRepost size={10} />
               </span>
             </div>
 
@@ -251,7 +252,7 @@ function PostViewPage() {
             <div className="pv-avatar-bubble">
               <img src={friendAvatar2} alt="Friend avatar" />
               <span className="pv-bubble-badge">
-                <Repeat2 size={10} strokeWidth={2.8} />
+                <IgRepost size={10} />
               </span>
             </div>
           </div>

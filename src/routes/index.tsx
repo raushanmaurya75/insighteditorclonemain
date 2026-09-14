@@ -107,7 +107,7 @@ function HomeFeedPage() {
             aria-label="Notifications"
             title="Notifications"
           >
-            <IgHeart size={26} />
+            <IgHeart size={24} />
           </Link>
         </header>
 
@@ -211,9 +211,7 @@ function HomeFeedPage() {
             {/* Heart Pop on double tap */}
             {showHeartPop && (
               <div className="feed-heart-pop-anim">
-                <svg viewBox="0 0 24 24" width="80" height="80" fill="#ffffff">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
+                <IgHeart size={80} active fill="#ffffff" />
               </div>
             )}
 
@@ -224,21 +222,21 @@ function HomeFeedPage() {
               aria-label="Tagged people"
               title="Tagged people"
             >
-              <IgPersonTagged size={13} />
+              <IgPersonTagged size={12} />
             </button>
 
-            {/* Audio mute button bottom right */}
+            {/* Audio toggle button */}
             <button
               type="button"
-              className="feed-overlay-btn feed-mute-btn"
+              className="feed-overlay-btn feed-audio-btn"
               onClick={() => setPost1Muted(!post1Muted)}
               aria-label={post1Muted ? "Unmute audio" : "Mute audio"}
               title={post1Muted ? "Unmute audio" : "Mute audio"}
             >
               {post1Muted ? (
-                <IgMuted size={15} />
+                <IgMuted size={14} />
               ) : (
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                   <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
                 </svg>
               )}
@@ -258,12 +256,7 @@ function HomeFeedPage() {
                 onClick={() => setPost1Liked(!post1Liked)}
                 aria-label="Like"
               >
-                <IgHeart
-                  size={26}
-                  fill={post1Liked ? "#ff2d55" : "none"}
-                  color={post1Liked ? "#ff2d55" : "currentColor"}
-                  stroke={post1Liked ? "#ff2d55" : "currentColor"}
-                />
+                <IgHeart size={24} active={post1Liked} />
                 <span className="feed-action-count">{post1Liked ? "595.1K" : "595K"}</span>
               </button>
 
@@ -273,7 +266,7 @@ function HomeFeedPage() {
                 className="feed-action-item text-inherit no-underline"
                 aria-label="Comments"
               >
-                <IgComment size={25} />
+                <IgComment size={24} />
                 <span className="feed-action-count">571</span>
               </Link>
 
@@ -284,7 +277,7 @@ function HomeFeedPage() {
                 onClick={() => setPost1Reposted(!post1Reposted)}
                 aria-label="Repost"
               >
-                <IgRepost size={25} color={post1Reposted ? "#a855f7" : "currentColor"} />
+                <IgRepost size={24} color={post1Reposted ? "#a855f7" : "currentColor"} />
                 <span className="feed-action-count">{post1Reposted ? "33.6K" : "33.5K"}</span>
               </button>
 
@@ -308,7 +301,7 @@ function HomeFeedPage() {
               onClick={() => setPost1Bookmarked(!post1Bookmarked)}
               aria-label="Save"
             >
-              <IgBookmark size={25} active={post1Bookmarked} />
+              <IgBookmark size={24} active={post1Bookmarked} />
             </button>
           </div>
 
@@ -434,12 +427,7 @@ function HomeFeedPage() {
                 onClick={() => setPost2Liked(!post2Liked)}
                 aria-label="Like"
               >
-                <IgHeart
-                  size={26}
-                  fill={post2Liked ? "#ff2d55" : "none"}
-                  color={post2Liked ? "#ff2d55" : "currentColor"}
-                  stroke={post2Liked ? "#ff2d55" : "currentColor"}
-                />
+                <IgHeart size={24} active={post2Liked} />
                 <span className="feed-action-count">{post2Liked ? "142.1K" : "142K"}</span>
               </button>
 
@@ -449,7 +437,7 @@ function HomeFeedPage() {
                 className="feed-action-item text-inherit no-underline"
                 aria-label="Comments"
               >
-                <IgComment size={25} />
+                <IgComment size={24} />
                 <span className="feed-action-count">892</span>
               </Link>
 
@@ -460,7 +448,7 @@ function HomeFeedPage() {
                 onClick={() => setPost2Reposted(!post2Reposted)}
                 aria-label="Repost"
               >
-                <IgRepost size={25} color={post2Reposted ? "#a855f7" : "currentColor"} />
+                <IgRepost size={24} color={post2Reposted ? "#a855f7" : "currentColor"} />
                 <span className="feed-action-count">{post2Reposted ? "12.5K" : "12.4K"}</span>
               </button>
 
@@ -484,7 +472,7 @@ function HomeFeedPage() {
               onClick={() => setPost2Bookmarked(!post2Bookmarked)}
               aria-label="Save"
             >
-              <IgBookmark size={25} active={post2Bookmarked} />
+              <IgBookmark size={24} active={post2Bookmarked} />
             </button>
           </div>
 
