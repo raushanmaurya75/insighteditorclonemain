@@ -1,18 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  Bookmark,
   ChevronLeft,
   ChevronRight,
-  Clock3,
-  Heart,
   Info,
-  MessageCircle,
   Play,
-  Repeat2,
-  Send,
   TrendingUp,
 } from "lucide-react";
+import {
+  IgHeart,
+  IgComment,
+  IgRepost,
+  IgShare,
+  IgBookmark,
+  IgClock,
+} from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
 
@@ -82,11 +84,11 @@ function InsightHeader() {
 
 function ReelPreviewAndMetrics() {
   const reelMetrics = [
-    { Icon: Heart, value: "368" },
-    { Icon: MessageCircle, value: "10" },
-    { Icon: Repeat2, value: "4" },
-    { Icon: Send, value: "4" },
-    { Icon: Bookmark, value: "0" },
+    { Icon: IgHeart, value: "368" },
+    { Icon: IgComment, value: "10" },
+    { Icon: IgRepost, value: "4" },
+    { Icon: IgShare, value: "4" },
+    { Icon: IgBookmark, value: "0" },
   ];
 
   return (
@@ -117,9 +119,9 @@ function ReelPreviewAndMetrics() {
         </div>
       </Link>
       <div className="iv-metric-icons">
-        {reelMetrics.map(({ Icon, value }) => (
-          <span key={value + Icon.displayName}>
-            <Icon size={22} strokeWidth={1.8} />
+        {reelMetrics.map(({ Icon, value }, i) => (
+          <span key={i}>
+            <Icon size={24} />
             <b>{value}</b>
           </span>
         ))}
@@ -151,12 +153,12 @@ function OverviewTab() {
   const [viewsFilter, setViewsFilter] = useState<ViewsFilter>("all");
 
   const impactRates = [
-    { Icon: Clock3, label: "Skip rate", rate: "22.1%", status: "Lower", positive: true },
-    { Icon: Send, label: "Share rate", rate: "0.1%", status: "Lower", positive: true },
-    { Icon: Heart, label: "Like rate", rate: "8.8%", status: "Lower", positive: true },
-    { Icon: Bookmark, label: "Save rate", rate: "0.0%", status: "Lower", positive: true },
-    { Icon: Repeat2, label: "Repost rate", rate: "0.1%", status: "Lower", positive: true },
-    { Icon: MessageCircle, label: "Comment rate", rate: "0.2%", status: "Higher", positive: true },
+    { Icon: IgClock, label: "Skip rate", rate: "22.1%", status: "Lower", positive: true },
+    { Icon: IgShare, label: "Share rate", rate: "0.1%", status: "Lower", positive: true },
+    { Icon: IgHeart, label: "Like rate", rate: "8.8%", status: "Lower", positive: true },
+    { Icon: IgBookmark, label: "Save rate", rate: "0.0%", status: "Lower", positive: true },
+    { Icon: IgRepost, label: "Repost rate", rate: "0.1%", status: "Lower", positive: true },
+    { Icon: IgComment, label: "Comment rate", rate: "0.2%", status: "Higher", positive: true },
   ];
 
   const viewSources = [
@@ -271,7 +273,7 @@ function OverviewTab() {
           {impactRates.map(({ Icon, label, rate, status }) => (
             <div className="iv-rate-row" key={label}>
               <div className="iv-rate-badge">
-                <Icon size={20} strokeWidth={1.9} />
+                <Icon size={22} />
               </div>
               <span className="iv-rate-label">{label}</span>
               <div className="iv-rate-right">

@@ -489,3 +489,17 @@ export const IgPersonTagged = (p: IconProps) => (
   </Svg>
 );
 
+export const IgClock = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" strokeWidth="2" />
+    <polyline
+      points="12 6.5 12 12 15.5 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+

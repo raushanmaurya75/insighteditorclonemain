@@ -16,8 +16,6 @@ import {
 } from "@/components/ig-icons";
 import reelMachine from "@/assets/reel-machine.jpg";
 import profilePhoto from "@/assets/profile-photo.jpg";
-import friendAvatar1 from "@/assets/home-story-man.jpg";
-import friendAvatar2 from "@/assets/home-story-selfie.jpg";
 
 export const Route = createFileRoute("/post-view")({
   head: () => ({
@@ -25,12 +23,12 @@ export const Route = createFileRoute("/post-view")({
       { title: "POV: You grab the machine... — btwdorian" },
       {
         name: "description",
-        content: "Instagram Reel view player for iPhone.",
+        content: "Instagram Reel view player.",
       },
       { property: "og:title", content: "POV: You grab the machine... — btwdorian" },
       {
         property: "og:description",
-        content: "Instagram Reel view player for iPhone.",
+        content: "Instagram Reel view player.",
       },
       { property: "og:type", content: "video.other" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -71,69 +69,25 @@ function PostViewPage() {
     <main className="pv-container">
       <div className="pv-phone-frame">
         {/* Reel Media Background */}
-        <div className="pv-media-wrap">
-          <img src={reelMachine} alt="POV: You grab the machine" className="pv-media-bg" />
-          {/* Subtle gradient overlays for UI readability */}
-          <div className="pv-top-gradient" />
-          <div className="pv-bottom-gradient" />
+      <div className="pv-media-wrap">
+        <img src={reelMachine} alt="POV: You grab the machine" className="pv-media-bg" />
+        {/* Subtle gradient overlays for UI readability */}
+        <div className="pv-top-gradient" />
+        <div className="pv-bottom-gradient" />
 
-          {/* Centered Text Overlay */}
-          <div className="pv-overlay-text-wrap">
-            <p className="pv-overlay-text">
-              POV: You grab the machine
-              <br />
-              before the guy who just blew
-              <br />
-              his paycheck can get back
-              <br />
-              from the ATM
-            </p>
-          </div>
+        {/* Centered Text Overlay */}
+        <div className="pv-overlay-text-wrap">
+          <p className="pv-overlay-text">
+            POV: You grab the machine
+            <br />
+            before the guy who just blew
+            <br />
+            his paycheck can get back
+            <br />
+            from the ATM
+          </p>
         </div>
-
-        {/* iPhone Status Bar + Dynamic Island */}
-        <div className="pv-status-bar">
-          <div className="pv-status-left">
-            <span className="pv-time">1:20</span>
-          </div>
-
-          <div className="pv-dynamic-island">
-            <span className="pv-island-dot" />
-          </div>
-
-          <div className="pv-status-right">
-            {/* Cellular bars */}
-            <svg
-              className="pv-cell-icon"
-              viewBox="0 0 17 11"
-              fill="currentColor"
-              width="17"
-              height="11"
-            >
-              <rect x="0" y="8" width="3" height="3" rx="0.6" />
-              <rect x="4.5" y="5.5" width="3" height="5.5" rx="0.6" />
-              <rect x="9" y="3" width="3" height="8" rx="0.6" />
-              <rect x="13.5" y="0" width="3" height="11" rx="0.6" />
-            </svg>
-            {/* Wifi */}
-            <svg
-              className="pv-wifi-icon"
-              viewBox="0 0 16 12"
-              fill="currentColor"
-              width="15"
-              height="11"
-            >
-              <path d="M8 11.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM8 5.6c2 0 3.8.8 5.1 2.1a1 1 0 1 0 1.4-1.4A9.2 9.2 0 0 0 8 3.6c-2.6 0-5 1-6.5 2.7a1 1 0 1 0 1.4 1.4A7.2 7.2 0 0 1 8 5.6Zm0-4.6c3.4 0 6.6 1.4 9 3.8a1 1 0 0 0 1.4-1.4A14.7 14.7 0 0 0 8-.4C4.3-.4 1 .9-1.4 3.4a1 1 0 1 0 1.4 1.4A12.7 12.7 0 0 1 8 1Z" />
-            </svg>
-            {/* Battery 54 */}
-            <div className="pv-battery">
-              <span className="pv-battery-pct">54</span>
-              <div className="pv-battery-border">
-                <div className="pv-battery-fill" style={{ width: "54%" }} />
-              </div>
-            </div>
-          </div>
-        </div>
+      </div>
 
         {/* Top Actions Overlay */}
         <div className="pv-top-nav">
@@ -228,35 +182,6 @@ function PostViewPage() {
 
         {/* Bottom Left Content Overlay */}
         <div className="pv-bottom-left">
-          {/* Interactive Friend Tags / Floating Bubbles */}
-          <div className="pv-bubbles-row">
-            {/* Heart float badge */}
-            <div className="pv-float-heart">
-              <IgHeart size={14} active fill="#ff2d55" />
-            </div>
-
-            {/* Tag a friend pill */}
-            <div className="pv-tag-pill">
-              <span>Tag a friend...</span>
-            </div>
-
-            {/* Friend 1 avatar bubble */}
-            <div className="pv-avatar-bubble">
-              <img src={friendAvatar1} alt="Friend avatar" />
-              <span className="pv-bubble-badge">
-                <IgRepost size={10} />
-              </span>
-            </div>
-
-            {/* Friend 2 avatar bubble */}
-            <div className="pv-avatar-bubble">
-              <img src={friendAvatar2} alt="Friend avatar" />
-              <span className="pv-bubble-badge">
-                <IgRepost size={10} />
-              </span>
-            </div>
-          </div>
-
           {/* Creator Profile Row */}
           <div className="pv-creator-row">
             <Link to="/profile" className="pv-creator-avatar-link">
@@ -313,9 +238,6 @@ function PostViewPage() {
             </button>
           </div>
         </div>
-
-        {/* iPhone Home Indicator */}
-        <div className="pv-home-indicator" />
       </div>
     </main>
   );
