@@ -1,34 +1,41 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft,
-  Camera,
-  Search,
   Eye,
-  TrendingUp,
+  Volume2,
+  VolumeX,
+  Play,
+  Heart,
 } from "lucide-react";
 import {
   IgHeart,
   IgComment,
   IgRepost,
   IgShare,
-  IgMore,
+  IgBookmark,
+  IgTwoLines,
 } from "@/components/ig-icons";
-import reelMachine from "@/assets/reel-machine.jpg";
-import profilePhoto from "@/assets/profile-photo.jpg";
+import { FloatingBottomNav } from "@/components/floating-bottom-nav";
+import {
+  useProfile,
+  formatCompactNumber,
+  setSelectedPostIndex,
+  type ProfilePost,
+} from "@/lib/profile-store";
 
 export const Route = createFileRoute("/post-view")({
   head: () => ({
     meta: [
-      { title: "POV: You grab the machine... — btwdorian" },
+      { title: "Posts — Instagram" },
       {
         name: "description",
-        content: "Instagram Reel view player.",
+        content: "Instagram Post view player and feed.",
       },
-      { property: "og:title", content: "POV: You grab the machine... — btwdorian" },
+      { property: "og:title", content: "Posts — Instagram" },
       {
         property: "og:description",
-        content: "Instagram Reel view player.",
+        content: "Instagram Post view player and feed.",
       },
       { property: "og:type", content: "video.other" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -37,207 +44,389 @@ export const Route = createFileRoute("/post-view")({
   component: PostViewPage,
 });
 
-function PostViewPage() {
+interface PostCardProps {
+  post: ProfilePost;
+  author: string;
+  authorAvatar: string;
+  postIndex: number;
+}
+
+function PostCardItem({
+  post,
+  author,
+  authorAvatar,
+  postIndex,
+}: PostCardProps) {
   const navigate = useNavigate();
-  const [liked, setLiked] = useState(true);
-  const [likeCount, setLikeCount] = useState(367);
+  const [liked, setLiked] = useState(false);
+  const [likeCountOffset, setLikeCountOffset] = useState(0);
   const [bookmarked, setBookmarked] = useState(false);
   const [reposted, setReposted] = useState(false);
-  const [repostCount, setRepostCount] = useState(4);
+  const [showHeartPop, setShowHeartPop] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
+  const [videoError, setVideoError] = useState(false);
+
+  const initialVideo = (post.video_url || "").trim();
+  const [videoSrc, setVideoSrc] = useState<string>(initialVideo);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const isRealShortcode =
+    post.shortcode &&
+    !post.shortcode.startsWith("post_") &&
+    !post.shortcode.startsWith("sc_") &&
+    post.shortcode.length >= 5;
+
+  // Fetch live video URL if shortcode exists and video is not set
+  useEffect(() => {
+    let active = true;
+    if (post.video_url && post.video_url.trim().length > 0) {
+      setVideoSrc(post.video_url);
+      setVideoError(false);
+      return;
+    }
+
+    if (isRealShortcode) {
+      const url = `https://www.instagram.com/p/${post.shortcode}/`;
+      fetch(`/api/fetch-post?url=${encodeURIComponent(url)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (active && data?.playable_video_url) {
+            setVideoSrc(data.playable_video_url);
+            setVideoError(false);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [post.shortcode, post.video_url, isRealShortcode]);
+
+  // Ref callback to initialize and auto-play video safely
+  const attachVideo = useCallback(
+    (el: HTMLVideoElement | null) => {
+      videoRef.current = el;
+      if (el) {
+        el.muted = isMuted;
+        el.defaultMuted = true;
+        el.setAttribute("playsinline", "true");
+        el.setAttribute("webkit-playsinline", "true");
+        const p = el.play();
+        if (p !== undefined) {
+          p.then(() => setIsPlaying(true)).catch(() => {
+            el.muted = true;
+            el.play().catch(() => {});
+          });
+        }
+      }
+    },
+    [isMuted]
+  );
+
+  const handleVideoError = () => {
+    setVideoError(true);
+  };
+
+  const togglePlayPause = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = nextMuted;
+    }
+  };
+
+  const handleDoubleTap = () => {
+    if (!liked) {
+      setLiked(true);
+      setLikeCountOffset((c) => c + 1);
+    }
+    setShowHeartPop(true);
+    setTimeout(() => setShowHeartPop(false), 900);
+  };
 
   const toggleLike = () => {
     if (liked) {
       setLiked(false);
-      setLikeCount((c) => c - 1);
+      setLikeCountOffset((c) => c - 1);
     } else {
       setLiked(true);
-      setLikeCount((c) => c + 1);
+      setLikeCountOffset((c) => c + 1);
     }
   };
 
-  const toggleRepost = () => {
-    if (reposted) {
-      setReposted(false);
-      setRepostCount((c) => c - 1);
-    } else {
-      setReposted(true);
-      setRepostCount((c) => c + 1);
-    }
-  };
+  const displayImage = post.display_url || post.thumbnail_src || authorAvatar;
+  const likesDisplay = formatCompactNumber(post.likes + likeCountOffset);
+  const commentsDisplay = formatCompactNumber(post.comments);
+  const viewsDisplay = formatCompactNumber(post.views || post.likes * 10 || 1200);
+
+  const hasDirectVideo = Boolean(videoSrc && !videoError && (videoSrc.includes(".mp4") || videoSrc.includes("blob:") || videoSrc.startsWith("/assets/")));
 
   return (
-    <main className="pv-container">
-      <div className="pv-phone-frame">
-        {/* Reel Media Background */}
-      <div className="pv-media-wrap">
-        <img src={reelMachine} alt="POV: You grab the machine" className="pv-media-bg" />
-        {/* Subtle gradient overlays for UI readability */}
-        <div className="pv-top-gradient" />
-        <div className="pv-bottom-gradient" />
-
-        {/* Centered Text Overlay */}
-        <div className="pv-overlay-text-wrap">
-          <p className="pv-overlay-text">
-            POV: You grab the machine
-            <br />
-            before the guy who just blew
-            <br />
-            his paycheck can get back
-            <br />
-            from the ATM
-          </p>
-        </div>
-      </div>
-
-        {/* Top Actions Overlay */}
-        <div className="pv-top-nav">
-          <button
-            type="button"
-            className="pv-nav-btn"
-            onClick={() => {
-              if (window.history.length > 1) {
-                navigate({ to: "/profile" });
-              } else {
-                navigate({ to: "/profile" });
-              }
-            }}
-            aria-label="Back to profile"
-          >
-            <ChevronLeft size={28} strokeWidth={2.4} />
-          </button>
-
-          <div className="pv-top-actions">
-            <button type="button" className="pv-nav-btn" aria-label="Camera">
-              <Camera size={26} strokeWidth={1.9} />
-            </button>
-            <button type="button" className="pv-nav-btn" aria-label="Search">
-              <Search size={25} strokeWidth={2.1} />
-            </button>
+    <article className="post-view-card">
+      {/* 1. Post Header: Avatar + Username + Audio Subtitle + 2-line Menu */}
+      <header className="post-view-author-row">
+        <div className="post-view-author-info">
+          <Link to="/profile" className="shrink-0">
+            <img
+              src={authorAvatar}
+              alt={author}
+              className="post-view-avatar"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60";
+              }}
+            />
+          </Link>
+          <div className="post-view-author-text">
+            <Link to="/profile" className="post-view-author-name">
+              {author}
+            </Link>
+            <span className="post-view-author-sub">
+              <span>♫</span>
+              <span>{author} · Original audio</span>
+            </span>
           </div>
         </div>
 
-        {/* Right Vertical Action Bar */}
-        <aside className="pv-right-actions">
-          {/* Like */}
-          <div className="pv-action-item">
+        <button
+          type="button"
+          className="p-1 text-inherit border-none bg-transparent cursor-pointer flex items-center opacity-80 hover:opacity-100"
+          aria-label="More post options"
+        >
+          <IgTwoLines size={20} />
+        </button>
+      </header>
+
+      {/* 2. Media Player / Reel Video (with Aspect Ratio 4:5) */}
+      <div
+        className="post-view-media-wrap"
+        onClick={togglePlayPause}
+        onDoubleClick={handleDoubleTap}
+      >
+        {hasDirectVideo ? (
+          <>
+            <video
+              ref={attachVideo}
+              src={videoSrc}
+              poster={displayImage}
+              autoPlay
+              loop
+              muted={isMuted}
+              playsInline
+              webkit-playsinline="true"
+              preload="auto"
+              onError={handleVideoError}
+            />
+
+            {/* Tap Play indicator if paused */}
+            {!isPlaying && (
+              <div className="post-view-play-badge">
+                <Play size={28} fill="#ffffff" />
+              </div>
+            )}
+
+            {/* Mute toggle button */}
             <button
               type="button"
-              className={`pv-action-btn ${liked ? "is-liked" : ""}`}
-              onClick={toggleLike}
-              aria-label="Like"
+              onClick={toggleMute}
+              className="post-view-mute-btn"
+              aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+              title={isMuted ? "Unmute" : "Mute"}
             >
-              <IgHeart
-                size={28}
-                active={liked}
-                className={liked ? "heart-pop" : ""}
-              />
+              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
             </button>
-            <span className="pv-action-count">{likeCount}</span>
+          </>
+        ) : (
+          <>
+            <img
+              src={displayImage}
+              alt={post.caption || author}
+              className="w-full h-full object-cover select-none"
+              loading="lazy"
+            />
+            {/* Play indicator badge on photo reels */}
+            {post.is_video && !isPlaying && (
+              <div className="post-view-play-badge">
+                <Play size={28} fill="#ffffff" />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Double-tap animated heart pop */}
+        {showHeartPop && (
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
+            <div className="animate-heart-pop text-white drop-shadow-[0_0_24px_rgba(239,68,68,0.9)]">
+              <Heart size={96} fill="#ef4444" color="#ef4444" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 3. View Insights & Boost Bar (Matching typography with Profile page) */}
+      <div className="post-view-insights-bar">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedPostIndex(postIndex);
+            navigate({ to: "/insight-view" });
+          }}
+          className="post-view-insights-btn"
+          title="View detailed performance insights"
+        >
+          <Eye size={18} strokeWidth={2.2} />
+          <span>{viewsDisplay} · View insights</span>
+        </button>
+
+        <button type="button" className="post-view-boost-btn">
+          Boost post
+        </button>
+      </div>
+
+      {/* 4. Action Buttons Bar: Like, Comment, Repost, Share, Bookmark */}
+      <div className="post-view-actions-bar justify-between">
+        <div className="flex items-center gap-5">
+          {/* Like + Count */}
+          <div className="post-view-action-group">
+            <button
+              type="button"
+              onClick={toggleLike}
+              className={`post-view-action-btn ${liked ? "text-[#ff3040]" : ""}`}
+              aria-label="Like post"
+            >
+              <IgHeart size={26} active={liked} />
+            </button>
+            <span>{likesDisplay}</span>
           </div>
 
-          {/* Comment */}
-          <div className="pv-action-item">
-            <button type="button" className="pv-action-btn" aria-label="Comments">
-              <IgComment size={28} />
+          {/* Comment + Count */}
+          <div className="post-view-action-group">
+            <button
+              type="button"
+              className="post-view-action-btn"
+              aria-label="Comment on post"
+            >
+              <IgComment size={26} />
             </button>
-            <span className="pv-action-count">10</span>
+            <span>{commentsDisplay}</span>
           </div>
 
           {/* Repost */}
-          <div className="pv-action-item">
-            <button
-              type="button"
-              className={`pv-action-btn ${reposted ? "is-reposted" : ""}`}
-              onClick={toggleRepost}
-              aria-label="Repost"
-            >
-              <IgRepost size={28} color={reposted ? "#a855f7" : "currentColor"} />
-            </button>
-            <span className="pv-action-count">{repostCount}</span>
-          </div>
-
-          {/* Share */}
-          <div className="pv-action-item">
-            <button type="button" className="pv-action-btn" aria-label="Share">
-              <IgShare size={26} />
-            </button>
-            <span className="pv-action-count">4</span>
-          </div>
-
-          {/* More options */}
-          <div className="pv-action-item">
-            <button type="button" className="pv-action-btn" aria-label="More options">
-              <IgMore size={26} />
-            </button>
-          </div>
-
-          {/* Audio square badge */}
-          <div className="pv-action-item pv-audio-item">
-            <div className="pv-audio-disc" title="Original audio - btwdorian">
-              <img src={profilePhoto} alt="Audio artwork" width={28} height={28} />
-              <span className="pv-audio-notes">♫</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* Bottom Left Content Overlay */}
-        <div className="pv-bottom-left">
-          {/* Creator Profile Row */}
-          <div className="pv-creator-row">
-            <Link to="/profile" className="pv-creator-avatar-link">
-              <img src={profilePhoto} alt="btwdorian avatar" className="pv-creator-avatar" />
-            </Link>
-            <Link to="/profile" className="pv-creator-name">
-              btwdorian
-            </Link>
-          </div>
-
-          {/* Caption */}
-          <p className="pv-caption">Sorry bro it’s due 😭 ...</p>
-        </div>
-
-        {/* Bottom Bar Controls */}
-        <div className="pv-bottom-bar">
-          {/* Get inspired on Edits pill */}
-          <button type="button" className="pv-edits-btn">
-            <span className="pv-edits-icon">
-              <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
-                <defs>
-                  <linearGradient id="igEditsGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#f58529" />
-                    <stop offset="50%" stopColor="#dd2a7b" />
-                    <stop offset="100%" stopColor="#8134af" />
-                  </linearGradient>
-                </defs>
-                <rect
-                  x="2"
-                  y="2"
-                  width="20"
-                  height="20"
-                  rx="6"
-                  stroke="url(#igEditsGrad)"
-                  strokeWidth="2.2"
-                />
-                <circle cx="12" cy="12" r="4.2" stroke="url(#igEditsGrad)" strokeWidth="2" />
-                <circle cx="17.5" cy="6.5" r="1.2" fill="url(#igEditsGrad)" />
-              </svg>
-            </span>
-            <span className="pv-edits-text">Get inspired on Edits</span>
+          <button
+            type="button"
+            onClick={() => setReposted(!reposted)}
+            className={`post-view-action-btn ${reposted ? "text-[#a855f7]" : ""}`}
+            aria-label="Repost"
+          >
+            <IgRepost size={26} color={reposted ? "#a855f7" : "currentColor"} />
           </button>
 
-          {/* Right Metrics: Views (links to Insight-View) & Boost */}
-          <div className="pv-bottom-metrics">
-            <Link to="/insight-view" className="pv-metric-btn" title="View detailed Reel insights">
-              <Eye size={18} strokeWidth={2.2} />
-              <span className="pv-metric-label">12.9K views</span>
-            </Link>
-
-            <button type="button" className="pv-metric-btn pv-boost-btn">
-              <TrendingUp size={18} strokeWidth={2.2} />
-              <span className="pv-metric-label">Boost</span>
-            </button>
-          </div>
+          {/* Share */}
+          <button
+            type="button"
+            className="post-view-action-btn"
+            aria-label="Share post"
+          >
+            <IgShare size={25} />
+          </button>
         </div>
+
+        {/* Save / Bookmark */}
+        <button
+          type="button"
+          onClick={() => setBookmarked(!bookmarked)}
+          className="post-view-action-btn"
+          aria-label="Save post"
+        >
+          <IgBookmark size={25} active={bookmarked} />
+        </button>
+      </div>
+
+      {/* 5. Caption and Age */}
+      <div className="post-view-caption-wrap">
+        <p className="m-0">
+          <Link to="/profile" className="post-view-caption-author">
+            {author}
+          </Link>
+          <span className="whitespace-pre-line">
+            {post.caption || "Moments & creativity ✨"}
+          </span>
+        </p>
+        <p className="post-view-age">2 days ago</p>
+      </div>
+    </article>
+  );
+}
+
+function PostViewPage() {
+  const navigate = useNavigate();
+  const { profile } = useProfile();
+
+  const postsList = profile.posts.length > 0 ? profile.posts : [];
+  const selectedIdx =
+    profile.selectedPostIndex >= 0 && profile.selectedPostIndex < postsList.length
+      ? profile.selectedPostIndex
+      : 0;
+
+  // Reorder posts so the tapped post appears first, followed by the rest
+  const orderedPosts = [
+    ...postsList.slice(selectedIdx),
+    ...postsList.slice(0, selectedIdx),
+  ];
+
+  return (
+    <main className="min-h-screen bg-page text-ink">
+      <div className="phone-shell pb-24 feed-phone-shell">
+        {/* Top Header: [< Back] Posts */}
+        <header className="post-view-header">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/profile" })}
+              className="p-1 text-inherit bg-transparent border-none cursor-pointer flex items-center justify-center -ml-1 hover:opacity-80"
+              aria-label="Back to profile"
+              title="Back to profile"
+            >
+              <ChevronLeft size={28} strokeWidth={2.4} />
+            </button>
+            <h1>Posts</h1>
+          </div>
+
+          <div className="w-8" />
+        </header>
+
+        {/* Scrollable List of Posts */}
+        <section aria-label="Posts list">
+          {orderedPosts.map((post, idx) => {
+            const originalIndex = postsList.findIndex((p) => p.id === post.id);
+            return (
+              <PostCardItem
+                key={post.id || `post_${idx}`}
+                post={post}
+                author={profile.username}
+                authorAvatar={profile.avatarUrl}
+                postIndex={originalIndex >= 0 ? originalIndex : idx}
+              />
+            );
+          })}
+        </section>
+
+        {/* Floating Bottom Nav */}
+        <FloatingBottomNav />
       </div>
     </main>
   );

@@ -12,6 +12,7 @@ import {
   UserRoundCheck,
 } from "lucide-react";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
+import { useProfile, formatCompactNumber } from "@/lib/profile-store";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -35,11 +36,7 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
-const insights = [
-  { label: "Views", value: "1.6M", to: "/insights" },
-  { label: "New followers", value: "286", to: "/insights" },
-  { label: "Content you shared", value: "37", to: "/insights" },
-];
+
 
 const TrialReels = (props: { className?: string }) => (
   <svg
@@ -68,6 +65,24 @@ const tools = [
 ];
 
 function DashboardPage() {
+  const { profile } = useProfile();
+
+  const totalViews =
+    profile.followersCount > 1000000
+      ? `${(profile.followersCount * 2.8 / 1000000).toFixed(1)}M`
+      : profile.followersCount > 50000
+      ? `${(profile.followersCount * 2.5 / 1000).toFixed(0)}K`
+      : "1.6M";
+
+  const newFollowers = Math.round(profile.followersCount * 0.045) || 286;
+  const contentShared = profile.postsCount || 37;
+
+  const insights = [
+    { label: "Views", value: totalViews, to: "/insights" },
+    { label: "New followers", value: formatCompactNumber(newFollowers), to: "/insights" },
+    { label: "Content you shared", value: String(contentShared), to: "/insights" },
+  ];
+
   return (
     <main className="min-h-screen bg-page text-ink">
       <div className="phone-shell pb-24">

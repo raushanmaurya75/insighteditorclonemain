@@ -47,9 +47,55 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+import {
+  scrapeInstagramProfile,
+  proxyMediaRequest,
+  fetchPostDetails,
+} from "./lib/instagram-scraper";
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+      const origin = url.origin;
+
+      // Handle CORS preflight for all /api routes
+      if (request.method === "OPTIONS" && url.pathname.startsWith("/api/")) {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Range",
+          },
+        });
+      }
+
+      // 1. Profile Scraper Endpoint
+      if (url.pathname === "/api/scrape-ig") {
+        const username = url.searchParams.get("username") || "";
+        const result = await scrapeInstagramProfile(username, origin);
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
+      }
+
+      // 2. Image / Video Proxy Endpoint
+      if (url.pathname === "/api/ig-image-proxy") {
+        const mediaUrl = url.searchParams.get("url") || "";
+        return await proxyMediaRequest(mediaUrl, request.headers);
+      }
+
+      // 3. Post Details Endpoint
+      if (url.pathname === "/api/fetch-post") {
+        const postUrl = url.searchParams.get("url") || "";
+        return await fetchPostDetails(postUrl, origin);
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

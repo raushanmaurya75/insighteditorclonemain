@@ -28,5 +28,7 @@ dist-ssr
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
-*.sw?
+# Nested foreign repos / scratch folders
+github insight/
+src/github insight/
+

@@ -91,10 +91,10 @@ function InsightsPage() {
       <div className="phone-shell pb-24">
         <header className="dash-nav">
           <Link
-            to="/dashboard"
-            aria-label="Back to dashboard"
+            to="/profile"
+            aria-label="Back to profile"
             className="dash-round"
-            title="Back to dashboard"
+            title="Back to profile"
           >
             <ChevronLeft />
           </Link>

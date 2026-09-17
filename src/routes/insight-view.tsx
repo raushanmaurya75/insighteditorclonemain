@@ -17,6 +17,7 @@ import {
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
+import { useProfile, formatCompactNumber, formatExactNumber } from "@/lib/profile-store";
 
 export const Route = createFileRoute("/insight-view")({
   head: () => ({
@@ -62,9 +63,9 @@ function InsightHeader() {
   return (
     <header className="iv-header">
       <Link
-        to="/insights"
-        aria-label="Back to insights"
-        title="Back to insights"
+        to="/profile"
+        aria-label="Back to profile"
+        title="Back to profile"
         className="iv-round-btn"
       >
         <ChevronLeft size={22} strokeWidth={2.4} />
@@ -83,11 +84,20 @@ function InsightHeader() {
 }
 
 function ReelPreviewAndMetrics() {
+  const { profile } = useProfile();
+  const post = profile.posts[profile.selectedPostIndex] || profile.posts[0] || null;
+
+  const likes = post ? post.likes : 368;
+  const comments = post ? post.comments : 10;
+  const shares = Math.round(likes * 0.08) || 4;
+  const reposts = Math.round(likes * 0.03) || 2;
+  const imgUrl = post?.thumbnail_src || post?.display_url || reelMachine;
+
   const reelMetrics = [
-    { Icon: IgHeart, value: "368" },
-    { Icon: IgComment, value: "10" },
-    { Icon: IgRepost, value: "4" },
-    { Icon: IgShare, value: "4" },
+    { Icon: IgHeart, value: formatCompactNumber(likes) },
+    { Icon: IgComment, value: formatCompactNumber(comments) },
+    { Icon: IgRepost, value: formatCompactNumber(reposts) },
+    { Icon: IgShare, value: formatCompactNumber(shares) },
     { Icon: IgBookmark, value: "0" },
   ];
 
@@ -100,23 +110,12 @@ function ReelPreviewAndMetrics() {
         title="Watch Reel"
       >
         <img
-          src={reelMachine}
+          src={imgUrl}
           alt="Reel preview"
           width={118}
           height={210}
-          className="iv-thumb-img"
+          className="iv-thumb-img object-cover"
         />
-        <div className="iv-thumb-overlay">
-          <p>
-            POV: You grab the machine
-            <br />
-            before the guy who just blew
-            <br />
-            his paycheck can get back
-            <br />
-            from the ATM
-          </p>
-        </div>
       </Link>
       <div className="iv-metric-icons">
         {reelMetrics.map(({ Icon, value }, i) => (
@@ -149,7 +148,7 @@ function Tabs({ current, onChange }: { current: Tab; onChange: (tab: Tab) => voi
   );
 }
 
-function OverviewTab() {
+function OverviewTab({ imgUrl }: { imgUrl: string }) {
   const [viewsFilter, setViewsFilter] = useState<ViewsFilter>("all");
 
   const impactRates = [
@@ -290,7 +289,7 @@ function OverviewTab() {
         <InfoTitle>How long people watched your reel</InfoTitle>
         <div className="iv-video-card-wrap">
           <div className="iv-video-card">
-            <img src={reelMachine} alt="Video preview" width={110} height={165} />
+            <img src={imgUrl} alt="Video preview" width={110} height={165} className="object-cover" />
             <div className="iv-video-play-badge">
               <Play size={20} fill="#ffffff" stroke="#ffffff" />
             </div>
@@ -356,7 +355,7 @@ function OverviewTab() {
   );
 }
 
-function EngagementTab() {
+function EngagementTab({ imgUrl }: { imgUrl: string }) {
   const interactions = [
     { label: "Likes", val: "368" },
     { label: "Comments", val: "10" },
@@ -391,7 +390,7 @@ function EngagementTab() {
         <InfoTitle>When people liked your reel</InfoTitle>
         <div className="iv-video-card-wrap">
           <div className="iv-video-card">
-            <img src={reelMachine} alt="Video preview" width={110} height={165} />
+            <img src={imgUrl} alt="Video preview" width={110} height={165} className="object-cover" />
             <div className="iv-video-play-badge">
               <Play size={20} fill="#ffffff" stroke="#ffffff" />
             </div>
@@ -533,6 +532,9 @@ function AudienceTab() {
 
 function InsightViewPage() {
   const [tab, setTab] = useState<Tab>("overview");
+  const { profile } = useProfile();
+  const post = profile.posts[profile.selectedPostIndex] || profile.posts[0] || null;
+  const imgUrl = post?.thumbnail_src || post?.display_url || reelMachine;
 
   return (
     <main className="iv-page">
@@ -540,8 +542,8 @@ function InsightViewPage() {
         <InsightHeader />
         <ReelPreviewAndMetrics />
         <Tabs current={tab} onChange={setTab} />
-        {tab === "overview" && <OverviewTab />}
-        {tab === "engagement" && <EngagementTab />}
+        {tab === "overview" && <OverviewTab imgUrl={imgUrl} />}
+        {tab === "engagement" && <EngagementTab imgUrl={imgUrl} />}
         {tab === "audience" && <AudienceTab />}
         <FloatingBottomNav />
       </div>
