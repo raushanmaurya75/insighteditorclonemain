@@ -19,13 +19,13 @@ import reelMachine from "@/assets/reel-machine.jpg";
 export const Route = createFileRoute("/insights")({
   head: () => ({
     meta: [
-      { title: "Insights — btwdorian" },
+      { title: "Insights — Instagram" },
       {
         name: "description",
         content:
           "Account insights: views, net followers, interactions by content type and profile activity for the last 30 days.",
       },
-      { property: "og:title", content: "Insights — btwdorian" },
+      { property: "og:title", content: "Insights — Instagram" },
       {
         property: "og:description",
         content:

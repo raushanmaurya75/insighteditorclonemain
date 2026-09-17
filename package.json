@@ -7,6 +7,9 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "sync:flutter": "node scripts/sync-flutter.mjs",
+    "build:apk": "npm run build && npm run sync:flutter && cd flutter_app && flutter build apk --release",
+    "build:apk:debug": "npm run build && npm run sync:flutter && cd flutter_app && flutter build apk --debug",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."

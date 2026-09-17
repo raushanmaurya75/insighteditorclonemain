@@ -530,4 +530,101 @@ export const IgPlay = ({ size = 14, ...p }: IconProps) => (
   </Svg>
 );
 
+export const IgClose = ({ size = 18, ...p }: IconProps) => (
+  <Svg size={size} viewBox="0 0 24 24" {...p}>
+    <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+export const IgTrash = ({ size = 16, ...p }: IconProps) => (
+  <Svg size={size} viewBox="0 0 24 24" {...p}>
+    <polyline points="3 6 5 6 21 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+export const IgEdit = ({ size = 16, ...p }: IconProps) => (
+  <Svg size={size} viewBox="0 0 24 24" {...p}>
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IgImage = ({ size = 16, ...p }: IconProps) => (
+  <Svg size={size} viewBox="0 0 24 24" {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+    <polyline points="21 15 16 10 5 21" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IgCamera = ({ size = 18, ...p }: IconProps) => (
+  <Svg size={size} viewBox="0 0 24 24" {...p}>
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="13" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+  </Svg>
+);
+
+export const IgInstagramGlyph = ({ size = 72, className, ...p }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+    {...p}
+  >
+    <defs>
+      <linearGradient id="ig-splash-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#f09433" />
+        <stop offset="25%" stopColor="#e6683c" />
+        <stop offset="50%" stopColor="#dc2743" />
+        <stop offset="75%" stopColor="#cc2366" />
+        <stop offset="100%" stopColor="#bc1888" />
+      </linearGradient>
+    </defs>
+    <rect
+      x="2"
+      y="2"
+      width="20"
+      height="20"
+      rx="5.5"
+      stroke="url(#ig-splash-grad)"
+      strokeWidth="1.8"
+    />
+    <circle
+      cx="12"
+      cy="12"
+      r="4.5"
+      stroke="url(#ig-splash-grad)"
+      strokeWidth="1.8"
+    />
+    <circle
+      cx="17.5"
+      cy="6.5"
+      r="1.2"
+      fill="url(#ig-splash-grad)"
+    />
+  </svg>
+);
+
+export const IgMetaLogo = ({ size = 20, ...p }: IconProps) => (
+  <svg
+    width={size}
+    height={(size * 22) / 36}
+    viewBox="0 0 36 22"
+    fill="none"
+    {...p}
+  >
+    <path
+      d="M26.4 1.5C24.1 1.5 22 2.7 20.7 4.7C19.8 3.3 18.6 2.3 17.1 1.7C15.3 1 13.1 1.1 11.2 2.2C8 4 6.2 7.6 6.5 11.3C6.8 15 9.1 18.3 12.6 19.3C14.7 19.9 17 19.4 18.8 18.2C19.6 17.6 20.3 16.9 20.8 16.1C22.2 18.6 24.8 20.1 27.8 19.9C31.7 19.7 34.8 16.5 35 12.6C35.2 8.3 32.2 2.7 26.4 1.5ZM12 16.7C9.7 16.7 7.9 14.3 7.8 11.4C7.7 8.5 9.4 6.2 11.7 6.1C14 6 15.9 8.2 16.1 11.1C16.3 14 14.4 16.6 12 16.7ZM26.4 16.7C24.1 16.7 22.2 14.3 22.1 11.4C22 8.5 23.7 6.2 26 6.1C28.3 6 30.2 8.2 30.4 11.1C30.6 14 28.7 16.6 26.4 16.7Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+
 

@@ -21,10 +21,15 @@ import {
   IgPlay,
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
+import { EditProfileModal } from "@/components/edit-profile-modal";
+import { AddHighlightModal } from "@/components/add-highlight-modal";
+import { EditHighlightModal } from "@/components/edit-highlight-modal";
+import { HighlightViewerModal } from "@/components/highlight-viewer-modal";
 import {
   useProfile,
   formatCompactNumber,
   formatExactNumber,
+  type ProfileHighlight,
 } from "@/lib/profile-store";
 import {
   AlertCircle,
@@ -64,6 +69,10 @@ function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"grid" | "reels" | "reposts" | "tagged">("grid");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isAddHighlightOpen, setIsAddHighlightOpen] = useState(false);
+  const [selectedHighlight, setSelectedHighlight] = useState<ProfileHighlight | null>(null);
+  const [editingHighlight, setEditingHighlight] = useState<ProfileHighlight | null>(null);
   const [usernameInput, setUsernameInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
@@ -253,7 +262,9 @@ function ProfilePage() {
 
           {/* Edit / Share Actions */}
           <div className="edit-actions">
-            <button type="button">Edit profile</button>
+            <button type="button" onClick={() => setIsEditProfileOpen(true)}>
+              Edit profile
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -270,18 +281,50 @@ function ProfilePage() {
 
         {/* Story Highlights */}
         <section className="highlights" aria-label="Story highlights">
-          <button className="highlight" type="button" onClick={handleOpenCloneModal}>
+          <button
+            className="highlight cursor-pointer"
+            type="button"
+            onClick={() => setIsAddHighlightOpen(true)}
+            title="Add new highlight"
+          >
             <span className="new-highlight">
               <IgPlus />
             </span>
             <small>New</small>
           </button>
-          <Link to="/insights" className="highlight" title="Audience Insights">
-            <span className="discord-highlight">
-              <IgDiscord />
-            </span>
-            <small>Degen Disci...</small>
-          </Link>
+
+          {(profile.highlights || []).map((hl) =>
+            hl.isSpecialDiscord ? (
+              <Link
+                key={hl.id}
+                to="/insights"
+                className="highlight"
+                title="Audience Insights"
+              >
+                <span className="discord-highlight">
+                  <IgDiscord />
+                </span>
+                <small>{hl.title}</small>
+              </Link>
+            ) : (
+              <button
+                key={hl.id}
+                type="button"
+                className="highlight cursor-pointer"
+                onClick={() => setSelectedHighlight(hl)}
+                title={`View ${hl.title}`}
+              >
+                <span className="custom-highlight-cover">
+                  <img
+                    src={hl.coverUrl || profile.avatarUrl}
+                    alt={hl.title}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                </span>
+                <small>{hl.title}</small>
+              </button>
+            )
+          )}
         </section>
 
         {/* Content Navigation Tabs */}
@@ -459,7 +502,7 @@ function ProfilePage() {
                   </div>
                   <div className="profile-menu-item-text">
                     <b>Reset to Default Profile</b>
-                    <span>Revert back to default @btwdorian profile</span>
+                    <span>Revert back to default @m0tivati0nal_qu0ts profile</span>
                   </div>
                 </button>
               )}
@@ -614,6 +657,35 @@ function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+      />
+
+      {/* Add Highlight Modal */}
+      <AddHighlightModal
+        isOpen={isAddHighlightOpen}
+        onClose={() => setIsAddHighlightOpen(false)}
+      />
+
+      {/* Highlight Viewer & Options Modal */}
+      <HighlightViewerModal
+        highlight={selectedHighlight}
+        onClose={() => setSelectedHighlight(null)}
+        onEdit={(hl) => {
+          setSelectedHighlight(null);
+          setEditingHighlight(hl);
+        }}
+      />
+
+      {/* Edit Highlight Modal */}
+      <EditHighlightModal
+        highlight={editingHighlight}
+        isOpen={editingHighlight !== null}
+        onClose={() => setEditingHighlight(null)}
+      />
     </main>
   );
 }

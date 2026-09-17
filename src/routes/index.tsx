@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Heart,
   X,
@@ -19,6 +19,9 @@ import {
   IgPlus,
   IgChevronDown,
   IgVerified,
+  IgClose,
+  IgInstagramGlyph,
+  IgMetaLogo,
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import {
@@ -27,6 +30,13 @@ import {
   addCustomStoryAccount,
   removeCustomStoryAccount,
   formatCompactNumber,
+  getFamousCelebrityPosts,
+  getSuggestedMotivationalPost,
+  getAllSuggestedPosts,
+  fetchAllFreshSuggestedPosts,
+  fetchLiveUserPosts,
+  fetchLiveUserData,
+  updateStoriesWithLiveAvatars,
   type HomeFeedPost,
   type HomeStoryAccount,
 } from "@/lib/profile-store";
@@ -97,6 +107,17 @@ function DynamicPostCard({ post }: PostItemProps) {
   return (
     <article className="feed-post-card border-b border-[var(--line)] pb-4 mb-2">
       {/* Post Header */}
+      {post.isSuggested && (
+        <div className="flex items-center justify-between px-3.5 pt-2 text-[11.5px] font-semibold text-[var(--subtle)]">
+          <span>Suggested for you</span>
+          <button
+            type="button"
+            className="text-[#0095f6] hover:text-[#00376b] font-bold bg-transparent border-none p-0 cursor-pointer text-[12px]"
+          >
+            Follow
+          </button>
+        </div>
+      )}
       <header className="flex items-center justify-between px-3.5 py-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="feed-story-avatar-wrap has-gradient-ring !w-10 !h-10 !p-0.5 shrink-0">
@@ -111,11 +132,16 @@ function DynamicPostCard({ post }: PostItemProps) {
             />
           </div>
           <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[13.5px] font-bold text-inherit truncate leading-tight">
                 {post.user}
               </span>
               {post.isVerified && <IgVerified size={13} className="text-[#0095f6]" />}
+              {post.isSuggested && (
+                <span className="text-[11px] text-[#0095f6] font-semibold bg-blue-50 px-1.5 py-0.2 rounded">
+                  Suggested
+                </span>
+              )}
             </div>
             {post.sub && (
               <span className="text-[11.5px] text-[var(--subtle)] truncate flex items-center gap-1 mt-0.5">
@@ -247,10 +273,14 @@ function DynamicPostCard({ post }: PostItemProps) {
         <p className="font-bold">
           {post.likes} {likeOffset > 0 ? `+${likeOffset}` : ""} likes
         </p>
-        <p className="leading-snug">
-          <span className="font-bold mr-1.5">{post.user}</span>
-          <span className="whitespace-pre-line">{post.caption}</span>
-        </p>
+        {post.caption && post.caption.trim().length > 0 && (
+          <p className="leading-snug">
+            <Link to="/profile" className="font-bold mr-1.5 text-inherit no-underline hover:underline">
+              {post.user}
+            </Link>
+            <span className="whitespace-pre-line">{post.caption}</span>
+          </p>
+        )}
         {post.comments && (
           <button
             type="button"
@@ -267,9 +297,21 @@ function DynamicPostCard({ post }: PostItemProps) {
   );
 }
 
+function checkIsSplashNeeded(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return !sessionStorage.getItem("ig_splash_completed_v3");
+  } catch {
+    return false;
+  }
+}
+
 function HomeFeedPage() {
   const { profile } = useProfile();
   const { stories } = useHomeStories();
+
+  const [isSplashActive, setIsSplashActive] = useState<boolean>(checkIsSplashNeeded);
+  const [isSplashFading, setIsSplashFading] = useState(false);
 
   const [isManageStoriesOpen, setIsManageStoriesOpen] = useState(false);
   const [storyInput, setStoryInput] = useState("");
@@ -277,62 +319,259 @@ function HomeFeedPage() {
   const [storyError, setStoryError] = useState<string | null>(null);
   const [activeStoryViewer, setActiveStoryViewer] = useState<HomeStoryAccount | null>(null);
 
+  const [freshSuggestedPosts, setFreshSuggestedPosts] = useState<HomeFeedPost[]>(() => getAllSuggestedPosts());
+  const [liveStoriesPosts, setLiveStoriesPosts] = useState<Map<string, HomeFeedPost[]>>(new Map());
+
+  // Cold-start splash screen: Pre-builds 100% of the feed & story avatars before revealing Home
+  useEffect(() => {
+    let active = true;
+
+    const needsSplash = checkIsSplashNeeded();
+
+    if (needsSplash) {
+      setIsSplashActive(true);
+
+      const minSplashDelay = new Promise((resolve) => setTimeout(resolve, 1500));
+      const suggestedPromise = fetchAllFreshSuggestedPosts();
+      const storyUsernames = stories.map((s) => s.username).filter(Boolean);
+      const storyPromise =
+        storyUsernames.length > 0
+          ? Promise.allSettled(storyUsernames.map((u) => fetchLiveUserData(u)))
+          : Promise.resolve([]);
+
+      // Preload everything simultaneously while splash is showing
+      Promise.allSettled([suggestedPromise, storyPromise, minSplashDelay]).then(
+        ([sugRes, storyRes]) => {
+          if (!active) return;
+
+          // 1. Forward fresh live scraped posts to Home feed
+          if (sugRes.status === "fulfilled" && sugRes.value && sugRes.value.length > 0) {
+            setFreshSuggestedPosts(sugRes.value);
+          }
+
+          // 2. Forward fresh story profile pictures & story posts
+          if (storyRes.status === "fulfilled" && Array.isArray(storyRes.value)) {
+            const validResults: any[] = [];
+            const nextMap = new Map<string, HomeFeedPost[]>();
+
+            storyRes.value.forEach((r: any) => {
+              if (r.status === "fulfilled" && r.value) {
+                validResults.push(r.value);
+                if (r.value.posts && r.value.posts.length > 0) {
+                  nextMap.set(r.value.username, r.value.posts);
+                }
+              }
+            });
+
+            if (validResults.length > 0) {
+              updateStoriesWithLiveAvatars(validResults);
+            }
+            if (nextMap.size > 0) {
+              setLiveStoriesPosts(nextMap);
+            }
+          }
+
+          try {
+            sessionStorage.setItem("ig_splash_completed_v3", "1");
+          } catch {}
+
+          // 3. Feed and Story Avatars are 100% updated in state — smoothly fade out splash screen!
+          setIsSplashFading(true);
+          setTimeout(() => {
+            if (active) setIsSplashActive(false);
+          }, 400);
+        }
+      );
+
+      // Failsafe timeout (3.8s max)
+      const failsafe = setTimeout(() => {
+        if (active) {
+          try {
+            sessionStorage.setItem("ig_splash_completed_v3", "1");
+          } catch {}
+          setIsSplashFading(true);
+          setTimeout(() => {
+            if (active) setIsSplashActive(false);
+          }, 400);
+        }
+      }, 3800);
+
+      return () => {
+        active = false;
+        clearTimeout(failsafe);
+      };
+    } else {
+      // Subsequent visits in session: feed displays immediately
+      setIsSplashActive(false);
+      fetchAllFreshSuggestedPosts().then((posts) => {
+        if (active && posts && posts.length > 0) {
+          setFreshSuggestedPosts(posts);
+        }
+      });
+
+      const storyUsernames = stories.map((s) => s.username).filter(Boolean);
+      if (storyUsernames.length > 0) {
+        Promise.allSettled(storyUsernames.map((u) => fetchLiveUserData(u))).then((res) => {
+          if (!active) return;
+          const validResults: any[] = [];
+          const nextMap = new Map<string, HomeFeedPost[]>();
+
+          res.forEach((r) => {
+            if (r.status === "fulfilled" && r.value) {
+              validResults.push(r.value);
+              if (r.value.posts && r.value.posts.length > 0) {
+                nextMap.set(r.value.username, r.value.posts);
+              }
+            }
+          });
+
+          if (validResults.length > 0) {
+            updateStoriesWithLiveAvatars(validResults);
+          }
+          if (nextMap.size > 0) {
+            setLiveStoriesPosts(nextMap);
+          }
+        });
+      }
+
+      return () => {
+        active = false;
+      };
+    }
+  }, [stories.length]);
+
   const handleAddStory = async (usernameToAdd?: string) => {
     const target = usernameToAdd || storyInput;
     if (!target.trim()) return;
 
+    // Support comma or space separated usernames (e.g. "cristiano, virat.kohli, selenagomez")
+    const rawList = target
+      .split(/[\s,]+/)
+      .map((u) => u.trim().replace(/^@+/, ""))
+      .filter(Boolean);
+
+    if (rawList.length === 0) return;
+
     setIsAddingStory(true);
     setStoryError(null);
 
-    const res = await addCustomStoryAccount(target);
+    let lastError: string | null = null;
+    let addedCount = 0;
+
+    for (const u of rawList) {
+      if (stories.length + addedCount >= 10) {
+        lastError = "Story tray is full (maximum 10 accounts).";
+        break;
+      }
+      const res = await addCustomStoryAccount(u);
+      if (res.success) {
+        addedCount++;
+      } else {
+        lastError = res.error || `Failed to add @${u}`;
+      }
+    }
+
     setIsAddingStory(false);
 
-    if (res.success) {
+    if (addedCount > 0) {
       setStoryInput("");
-    } else {
-      setStoryError(res.error || "Unable to add account. Please check the username.");
+    }
+    if (lastError && addedCount === 0) {
+      setStoryError(lastError);
     }
   };
 
-  // Construct combined feed posts
-  // 1. User's own cloned profile posts
-  const userProfilePosts: HomeFeedPost[] = (profile.posts || []).slice(0, 3).map((p, idx) => ({
-    id: `user_p_${p.id || idx}`,
-    user: profile.username,
-    avatar: profile.avatarUrl,
-    sub: idx % 2 === 0 ? "♫ Original Audio" : "City Highlights",
-    img: p.display_url || p.thumbnail_src || profile.avatarUrl,
-    count: "1/1",
-    tag1: `#${profile.username}`,
-    tag2: "#moments",
-    time: "2 hours ago",
-    likes: formatCompactNumber(p.likes || 850),
-    comments: formatCompactNumber(p.comments || 32),
-    caption: p.caption || "Consistency and creativity ✨ #moments",
-    isVerified: profile.isVerified,
-    is_video: p.is_video,
-    video_url: p.video_url,
-    shortcode: p.shortcode,
-  }));
+  // Helper to build a randomized (non-serial) feed across all added usernames + suggested posts
+  const combinedFeed = useMemo<HomeFeedPost[]>(() => {
+    // 1. User's own cloned profile posts
+    const userProfilePosts: HomeFeedPost[] = (profile.posts || []).map((p, idx) => ({
+      id: `user_p_${p.id || idx}`,
+      user: profile.username,
+      avatar: profile.avatarUrl,
+      sub: idx % 2 === 0 ? "♫ Original Audio" : "City Highlights",
+      img: p.display_url || p.thumbnail_src || profile.avatarUrl,
+      count: "1/1",
+      tag1: `#${profile.username}`,
+      tag2: "#moments",
+      time: "2 hours ago",
+      likes: formatCompactNumber(p.likes || 850),
+      comments: formatCompactNumber(p.comments || 32),
+      caption: p.caption || "",
+      isVerified: profile.isVerified,
+      is_video: p.is_video,
+      video_url: p.video_url,
+      shortcode: p.shortcode,
+    }));
 
-  // 2. Added story accounts posts
-  const storyAccountsPosts: HomeFeedPost[] = stories.flatMap((s) => s.posts || []);
+    // 2. Group regular posts by username queue (using fresh live fetched posts if available)
+    const postsByUser = new Map<string, HomeFeedPost[]>();
 
-  // 3. Realistic interleaved feed
-  const combinedFeed: HomeFeedPost[] = [];
-  let uIdx = 0;
-  let sIdx = 0;
-
-  while (uIdx < userProfilePosts.length || sIdx < storyAccountsPosts.length) {
-    if (uIdx < userProfilePosts.length) {
-      const uPost = userProfilePosts[uIdx++];
-      if (uPost) combinedFeed.push(uPost);
+    if (userProfilePosts.length > 0) {
+      postsByUser.set(profile.username, [...userProfilePosts]);
     }
-    if (sIdx < storyAccountsPosts.length) {
-      const sPost = storyAccountsPosts[sIdx++];
-      if (sPost) combinedFeed.push(sPost);
+
+    stories.forEach((s) => {
+      const livePosts = liveStoriesPosts.get(s.username);
+      const postList = livePosts && livePosts.length > 0 ? livePosts : s.posts;
+      if (postList && postList.length > 0) {
+        postsByUser.set(s.username, [...postList]);
+      }
+    });
+
+    // Randomized round-robin interleaving so posts from different usernames appear mixed, not serial
+    const shuffledRegularPosts: HomeFeedPost[] = [];
+    const usernames = Array.from(postsByUser.keys());
+
+    let hasRemaining = true;
+    let round = 0;
+    while (hasRemaining && round < 50) {
+      hasRemaining = false;
+      // Seeded/pseudo-random sort of usernames per round to ensure diverse user alternation
+      const roundOrder = [...usernames].sort((a, b) => {
+        const hashA = (a.charCodeAt(0) * 37 + a.length * 13 + round * 19) % 100;
+        const hashB = (b.charCodeAt(0) * 37 + b.length * 13 + round * 19) % 100;
+        return hashA - hashB;
+      });
+
+      for (const u of roundOrder) {
+        const queue = postsByUser.get(u);
+        if (queue && queue.length > 0) {
+          const nextPost = queue.shift()!;
+          shuffledRegularPosts.push(nextPost);
+          if (queue.length > 0) hasRemaining = true;
+        }
+      }
+      round++;
     }
-  }
+
+    // 3. Fresh live suggested posts from the 5 pre-added accounts
+    const suggestedPool: HomeFeedPost[] = freshSuggestedPosts.filter(Boolean);
+
+    // 4. Interleave suggested posts into the feed evenly
+    const result: HomeFeedPost[] = [];
+    let sugIdx = 0;
+
+    if (shuffledRegularPosts.length === 0) {
+      return suggestedPool;
+    }
+
+    shuffledRegularPosts.forEach((p, idx) => {
+      result.push(p);
+      // Insert a suggested post periodically
+      if ((idx + 1) % 2 === 0 && sugIdx < suggestedPool.length) {
+        result.push(suggestedPool[sugIdx]);
+        sugIdx++;
+      }
+    });
+
+    // Append any remaining suggested posts
+    while (sugIdx < suggestedPool.length) {
+      result.push(suggestedPool[sugIdx]);
+      sugIdx++;
+    }
+
+    return result;
+  }, [profile, stories, freshSuggestedPosts, liveStoriesPosts]);
 
   const isStoriesFull = stories.length >= 10;
 
@@ -438,171 +677,192 @@ function HomeFeedPage() {
       </div>
 
       {/* =========================================================================
-          MANAGE STORIES BOTTOM SHEET MODAL (Matches GitHub Insight Folder)
+          MANAGE STORIES BOTTOM SHEET MODAL
           ========================================================================= */}
       {isManageStoriesOpen && (
         <div
-          className="clone-modal-backdrop"
-          onClick={() => !isAddingStory && setIsManageStoriesOpen(false)}
+          className="clone-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isAddingStory) setIsManageStoriesOpen(false);
+          }}
         >
           <div
-            className="clone-modal-card max-h-[85vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="clone-modal-dialog max-w-[480px] w-full max-h-[90vh] flex flex-col overflow-hidden bg-white text-ink rounded-t-2xl shadow-2xl"
+            role="dialog"
+            aria-modal="true"
           >
-            {/* Grab handle */}
-            <div className="w-10 h-1 bg-white/25 rounded-full mx-auto mb-3" />
+            <div className="clone-modal-drag-bar" />
 
             {/* Header + Counter Badge */}
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-[18px] font-bold text-ink">Manage Home Stories</h2>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[12px] font-bold border ${
-                  isStoriesFull
-                    ? "bg-red-500/20 text-red-400 border-red-500/40"
-                    : "bg-[var(--brand)]/20 text-[var(--brand)] border-[var(--brand)]/40"
-                }`}
-              >
-                {stories.length}/10 Added
-              </span>
-            </div>
-
-            <p className="text-[13px] text-[var(--subtle)] leading-relaxed mb-4">
-              Add up to 10 Instagram usernames. Their live profile avatar will appear in your top
-              story tray and their posts will show on your feed.
-            </p>
-
-            {/* Input Form */}
-            <div className="flex gap-2 mb-3">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-[var(--brand)] text-[15px]">
-                  @
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#ededed]">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-ink">Manage Home Stories</h2>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                    isStoriesFull
+                      ? "bg-red-50 text-red-500 border-red-200"
+                      : "bg-blue-50 text-[#0095f6] border-blue-200"
+                  }`}
+                >
+                  {stories.length}/10
                 </span>
-                <input
-                  type="text"
-                  value={storyInput}
-                  onChange={(e) => setStoryInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isAddingStory && !isStoriesFull) {
-                      handleAddStory();
-                    }
-                  }}
-                  disabled={isStoriesFull || isAddingStory}
-                  placeholder={
-                    isStoriesFull ? "Limit reached (10/10)" : "Enter username (e.g. cristiano)"
-                  }
-                  className="w-full bg-[var(--panel)] text-ink pl-8 pr-3 py-2.5 rounded-xl border border-[var(--line)] text-[14px] outline-none focus:border-[var(--brand)] transition-colors disabled:opacity-50"
-                />
               </div>
 
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsManageStoriesOpen(false)}
+                  className="text-sm font-bold text-[#0095f6] hover:text-[#00376b] cursor-pointer bg-transparent border-none p-1"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+              <p className="text-subtle leading-relaxed">
+                Add up to 10 Instagram usernames. Real profile avatars and posts are fetched via our scraper engine and integrated into your story tray and feed.
+              </p>
+
+              {/* Input Form */}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-[#0095f6] text-sm">
+                    @
+                  </span>
+                  <input
+                    type="text"
+                    value={storyInput}
+                    onChange={(e) => setStoryInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isAddingStory && !isStoriesFull) {
+                        handleAddStory();
+                      }
+                    }}
+                    disabled={isStoriesFull || isAddingStory}
+                    placeholder={
+                      isStoriesFull
+                        ? "Limit reached (10/10)"
+                        : "Enter usernames (e.g. cristiano, virat.kohli)"
+                    }
+                    className="w-full bg-white text-ink pl-8 pr-3 py-2 border border-[#dbdbdb] rounded-xl text-xs outline-none focus:border-black transition-colors disabled:opacity-50"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddStory()}
+                  disabled={isStoriesFull || isAddingStory || !storyInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white font-bold text-xs border-none cursor-pointer disabled:opacity-40 flex items-center justify-center min-w-[65px] hover:opacity-95 shadow-sm shadow-pink-500/25"
+                >
+                  {isAddingStory ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    "Add"
+                  )}
+                </button>
+              </div>
+
+              {/* Error Message */}
+              {storyError && (
+                <p className="text-[11.5px] text-red-500 font-medium">{storyError}</p>
+              )}
+
+              {/* Quick Suggestion Chips */}
+              <div>
+                <p className="text-[11.5px] font-semibold text-subtle mb-1.5">
+                  Quick Suggestions (Tap to add):
+                </p>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar flex-wrap">
+                  {SUGGESTED_QUICK_ACCOUNTS.map((uname) => {
+                    const isAdded = stories.some(
+                      (s) => s.username.toLowerCase() === uname.toLowerCase()
+                    );
+                    return (
+                      <button
+                        key={uname}
+                        type="button"
+                        disabled={isAdded || isStoriesFull || isAddingStory}
+                        onClick={() => handleAddStory(uname)}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium border shrink-0 flex items-center gap-1 cursor-pointer transition-all ${
+                          isAdded
+                            ? "bg-gray-100 text-subtle border-transparent opacity-60 cursor-default"
+                            : "bg-white text-ink border-[#dbdbdb] hover:border-[#0095f6]"
+                        }`}
+                      >
+                        {isAdded && <CheckCircle2 size={11} className="text-green-500" />}
+                        <span>@{uname}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="h-px bg-[#ededed] my-2" />
+
+              {/* Added Accounts List */}
+              <h3 className="text-xs font-bold text-ink">
+                Added Story Accounts ({stories.length}/10)
+              </h3>
+
+              {stories.length === 0 ? (
+                <p className="text-center py-6 text-xs text-subtle">
+                  No custom story accounts yet. Enter a username above to add stories to your home feed!
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {stories.map((acc) => (
+                    <div
+                      key={acc.id}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#ededed] hover:border-gray-300 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shrink-0 flex items-center justify-center">
+                          <img
+                            src={acc.profilePicUrl}
+                            alt={acc.username}
+                            className="w-full h-full rounded-full object-cover bg-black"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src =
+                                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60";
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0 text-xs">
+                          <p className="font-bold text-ink truncate leading-tight">
+                            @{acc.username}
+                          </p>
+                          <p className="text-[11px] text-subtle truncate mt-0.5">
+                            {acc.fullName || acc.username}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeCustomStoryAccount(acc.username)}
+                        className="p-1.5 text-subtle hover:text-red-500 hover:bg-red-50 rounded bg-transparent border-none cursor-pointer transition-colors"
+                        title="Remove story account"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 border-t border-[#ededed] flex justify-end bg-[#fbfbfb]">
               <button
                 type="button"
-                onClick={() => handleAddStory()}
-                disabled={isStoriesFull || isAddingStory || !storyInput.trim()}
-                className="px-5 py-2.5 rounded-xl bg-[var(--brand)] text-white font-semibold text-[14px] border-none cursor-pointer disabled:opacity-40 flex items-center justify-center min-w-[70px] hover:opacity-90 transition-opacity"
+                onClick={() => setIsManageStoriesOpen(false)}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white font-bold text-xs border-none cursor-pointer hover:opacity-95 shadow-sm shadow-pink-500/25"
               >
-                {isAddingStory ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  "Add"
-                )}
+                Done
               </button>
             </div>
-
-            {/* Error Message */}
-            {storyError && (
-              <p className="text-[12.5px] text-red-500 font-medium mb-3">{storyError}</p>
-            )}
-
-            {/* Quick Suggestion Chips */}
-            <div className="mb-4">
-              <p className="text-[12px] font-semibold text-[var(--subtle)] mb-2">
-                Quick Suggestions:
-              </p>
-              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                {SUGGESTED_QUICK_ACCOUNTS.map((uname) => {
-                  const isAdded = stories.some(
-                    (s) => s.username.toLowerCase() === uname.toLowerCase()
-                  );
-                  return (
-                    <button
-                      key={uname}
-                      type="button"
-                      disabled={isAdded || isStoriesFull || isAddingStory}
-                      onClick={() => handleAddStory(uname)}
-                      className={`px-3 py-1.5 rounded-full text-[12px] font-medium border shrink-0 flex items-center gap-1 cursor-pointer transition-all ${
-                        isAdded
-                          ? "bg-[var(--panel)] text-[var(--brand)] border-[var(--brand)]/30 opacity-70 cursor-default"
-                          : "bg-[var(--panel)] text-ink border-[var(--line)] hover:border-[var(--brand)]"
-                      }`}
-                    >
-                      {isAdded && <CheckCircle2 size={13} className="text-[var(--brand)]" />}
-                      <span>@{uname}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="h-px bg-[var(--line)] my-3" />
-
-            {/* Added Accounts List */}
-            <h3 className="text-[13.5px] font-bold text-ink mb-2">
-              Added Story Accounts ({stories.length}/10)
-            </h3>
-
-            {stories.length === 0 ? (
-              <p className="text-center py-6 text-[13px] text-[var(--subtle)]">
-                No custom story accounts yet. Enter a username above to add stories to your home feed!
-              </p>
-            ) : (
-              <div className="space-y-1.5">
-                {stories.map((acc) => (
-                  <div
-                    key={acc.id}
-                    className="flex items-center justify-between p-2 rounded-xl bg-[var(--panel)] border border-[var(--line)]"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shrink-0">
-                        <img
-                          src={acc.profilePicUrl}
-                          alt={acc.username}
-                          className="w-full h-full rounded-full object-cover bg-black"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src =
-                              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60";
-                          }}
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[13.5px] font-bold text-ink truncate leading-tight">
-                          {acc.username}
-                        </p>
-                        <p className="text-[11.5px] text-[var(--subtle)] truncate">
-                          {acc.fullName || `@${acc.username}`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => removeCustomStoryAccount(acc.username)}
-                      className="p-2 text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer transition-colors"
-                      title="Remove story account"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setIsManageStoriesOpen(false)}
-              className="w-full mt-4 py-2.5 rounded-xl bg-[var(--panel)] border border-[var(--line)] text-ink font-semibold text-[13.5px] cursor-pointer hover:bg-[var(--line)] transition-colors"
-            >
-              Done
-            </button>
           </div>
         </div>
       )}
@@ -694,6 +954,34 @@ function HomeFeedPage() {
           </div>
         </div>
       )}
+
+      {/* =========================================================================
+          INSTAGRAM NATIVE SPLASH SCREEN OVERLAY
+          ========================================================================= */}
+      {isSplashActive && (
+        <aside
+          className={`ig-splash-screen ${isSplashFading ? "is-fading" : ""}`}
+          aria-label="Instagram Splash"
+        >
+          <div className="ig-splash-center">
+            <div className="ig-splash-glyph-wrap">
+              <IgInstagramGlyph size={76} />
+            </div>
+            <div className="ig-splash-loading-bar">
+              <div className="ig-splash-loading-bar-fill" />
+            </div>
+          </div>
+
+          <footer className="ig-splash-footer">
+            <span className="ig-splash-from-text">from</span>
+            <div className="ig-splash-meta-brand">
+              <IgMetaLogo size={22} className="ig-splash-meta-icon" />
+              <span>Meta</span>
+            </div>
+          </footer>
+        </aside>
+      )}
     </main>
   );
 }
+

@@ -1,11 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   Info,
   Play,
   TrendingUp,
+  Pencil,
+  Sparkles,
+  Check,
+  Edit3,
+  Sliders,
+  Eye,
 } from "lucide-react";
 import {
   IgHeart,
@@ -17,20 +23,36 @@ import {
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
-import { useProfile, formatCompactNumber, formatExactNumber } from "@/lib/profile-store";
+import { useProfile, formatCompactNumber } from "@/lib/profile-store";
+import {
+  loadPostInsights,
+  savePostInsights,
+  calculateMetricStatus,
+  GraphSplineMath,
+  type PostInsightsData,
+  type GraphPoint,
+} from "@/lib/insight-store";
+import { EditPostInsightModal } from "@/components/edit-post-insight-modal";
+import { InteractiveGraphEditor } from "@/components/interactive-graph-editor";
+import {
+  SingleTextEditDialog,
+  SingleRateEditDialog,
+  SinglePercentageEditDialog,
+  YAxisEditDialog,
+} from "@/components/single-field-dialogs";
 
 export const Route = createFileRoute("/insight-view")({
   head: () => ({
     meta: [
-      { title: "Reel insights — btwdorian" },
+      { title: "Reel insights — Instagram" },
       {
         name: "description",
-        content: "Detailed reel performance, engagement, and audience insights for iPhone.",
+        content: "Detailed reel performance, engagement, and audience insights.",
       },
-      { property: "og:title", content: "Reel insights — btwdorian" },
+      { property: "og:title", content: "Reel insights — Instagram" },
       {
         property: "og:description",
-        content: "Detailed reel performance, engagement, and audience insights for iPhone.",
+        content: "Detailed reel performance, engagement, and audience insights.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -43,25 +65,26 @@ type Tab = "overview" | "engagement" | "audience";
 type ViewsFilter = "all" | "followers" | "non-followers";
 type AudienceDetailTab = "country" | "age" | "gender";
 
-interface AudienceItem {
-  label: string;
-  pct: string;
-  width: number;
-  purple?: boolean;
-}
-
 function InfoTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="iv-title">
+    <h2 className="iv-title flex items-center gap-1.5">
       <span>{children}</span>
       <Info size={16} className="iv-info-icon" aria-hidden="true" />
     </h2>
   );
 }
 
-function InsightHeader() {
+function InsightHeader({
+  isEditMode,
+  onToggleEditMode,
+  onOpenFullModal,
+}: {
+  isEditMode: boolean;
+  onToggleEditMode: () => void;
+  onOpenFullModal: () => void;
+}) {
   return (
-    <header className="iv-header">
+    <header className="iv-header flex items-center justify-between px-4 py-3">
       <Link
         to="/profile"
         aria-label="Back to profile"
@@ -70,39 +93,59 @@ function InsightHeader() {
       >
         <ChevronLeft size={22} strokeWidth={2.4} />
       </Link>
-      <h1>Reel insights</h1>
-      <Link
-        to="/dashboard"
-        aria-label="Professional Dashboard"
-        title="Dashboard"
-        className="iv-round-btn"
-      >
-        <TrendingUp size={20} strokeWidth={2.2} />
-      </Link>
+
+      <h1 className="text-base font-bold tracking-tight text-ink">Reel insights</h1>
+
+      {/* Top Right Edit Mode Toggle Icon */}
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onToggleEditMode}
+          aria-label={isEditMode ? "Exit edit mode" : "Edit insights"}
+          title={isEditMode ? "Exit Edit Mode" : "Edit Insights & Graphs"}
+          className={`iv-round-btn transition-all ${
+            isEditMode
+              ? "bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white border-transparent shadow-md shadow-pink-500/25 scale-105"
+              : "hover:border-black"
+          }`}
+        >
+          {isEditMode ? (
+            <Check size={20} strokeWidth={2.6} />
+          ) : (
+            <Pencil size={18} strokeWidth={2.2} />
+          )}
+        </button>
+      </div>
     </header>
   );
 }
 
-function ReelPreviewAndMetrics() {
-  const { profile } = useProfile();
-  const post = profile.posts[profile.selectedPostIndex] || profile.posts[0] || null;
-
-  const likes = post ? post.likes : 368;
-  const comments = post ? post.comments : 10;
-  const shares = Math.round(likes * 0.08) || 4;
-  const reposts = Math.round(likes * 0.03) || 2;
-  const imgUrl = post?.thumbnail_src || post?.display_url || reelMachine;
-
-  const reelMetrics = [
-    { Icon: IgHeart, value: formatCompactNumber(likes) },
-    { Icon: IgComment, value: formatCompactNumber(comments) },
-    { Icon: IgRepost, value: formatCompactNumber(reposts) },
-    { Icon: IgShare, value: formatCompactNumber(shares) },
-    { Icon: IgBookmark, value: "0" },
+function ReelPreviewAndMetrics({
+  insights,
+  displayImage,
+  isEditMode,
+  onEditField,
+}: {
+  insights: PostInsightsData;
+  displayImage: string;
+  isEditMode: boolean;
+  onEditField: (field: "likes" | "comments" | "reposts" | "shares" | "saves", currentVal: number) => void;
+}) {
+  const reelMetrics: Array<{
+    field: "likes" | "comments" | "reposts" | "shares" | "saves";
+    Icon: any;
+    value: string;
+    numVal: number;
+  }> = [
+    { field: "likes", Icon: IgHeart, value: GraphSplineMath.formatViews(insights.likes), numVal: insights.likes },
+    { field: "comments", Icon: IgComment, value: GraphSplineMath.formatViews(insights.comments), numVal: insights.comments },
+    { field: "reposts", Icon: IgRepost, value: GraphSplineMath.formatViews(insights.reposts), numVal: insights.reposts },
+    { field: "shares", Icon: IgShare, value: GraphSplineMath.formatViews(insights.shares), numVal: insights.shares },
+    { field: "saves", Icon: IgBookmark, value: GraphSplineMath.formatViews(insights.saves), numVal: insights.saves },
   ];
 
   return (
-    <section className="iv-top-strip">
+    <section className="iv-top-strip relative">
       <Link
         to="/post-view"
         className="iv-thumb-wrap"
@@ -110,19 +153,33 @@ function ReelPreviewAndMetrics() {
         title="Watch Reel"
       >
         <img
-          src={imgUrl}
+          src={insights.customThumbnailUrl || displayImage}
           alt="Reel preview"
           width={118}
           height={210}
           className="iv-thumb-img object-cover"
         />
       </Link>
+
       <div className="iv-metric-icons">
-        {reelMetrics.map(({ Icon, value }, i) => (
-          <span key={i}>
+        {reelMetrics.map(({ field, Icon, value, numVal }) => (
+          <button
+            key={field}
+            type="button"
+            onClick={() => onEditField(field, numVal)}
+            className={`flex flex-col items-center p-1 rounded-xl transition-all cursor-pointer bg-transparent border-none ${
+              isEditMode
+                ? "hover:bg-pink-50 hover:text-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40"
+                : "text-inherit"
+            }`}
+            title={`Click to edit ${field}`}
+          >
             <Icon size={24} />
-            <b>{value}</b>
-          </span>
+            <b className="text-xs font-bold mt-1 flex items-center gap-0.5">
+              {value}
+              {isEditMode && <Pencil size={9} className="text-[#bc1888]" />}
+            </b>
+          </button>
         ))}
       </div>
     </section>
@@ -137,7 +194,7 @@ function Tabs({ current, onChange }: { current: Tab; onChange: (tab: Tab) => voi
           type="button"
           role="tab"
           aria-selected={current === tab}
-          className={current === tab ? "active" : ""}
+          className={current === tab ? "active font-bold" : ""}
           onClick={() => onChange(tab)}
           key={tab}
         >
@@ -148,25 +205,152 @@ function Tabs({ current, onChange }: { current: Tab; onChange: (tab: Tab) => voi
   );
 }
 
-function OverviewTab({ imgUrl }: { imgUrl: string }) {
+function OverviewTab({
+  insights,
+  imgUrl,
+  isEditMode,
+  onEditText,
+  onEditRate,
+  onEditPercentage,
+  onEditYAxis,
+  onOpenGraphEditor,
+}: {
+  insights: PostInsightsData;
+  imgUrl: string;
+  isEditMode: boolean;
+  onEditText: (title: string, currentVal: string | number, onSave: (v: string) => void) => void;
+  onEditRate: (
+    key: "skip" | "share" | "like" | "save" | "repost" | "comment",
+    label: string,
+    currentRate: number,
+    currentStatus: "Auto" | "Higher" | "Lower" | "Typical"
+  ) => void;
+  onEditPercentage: (title: string, currentVal: number, onSave: (v: number) => void) => void;
+  onEditYAxis: () => void;
+  onOpenGraphEditor: (target: "this_reel" | "typical_reel" | "watch_retention") => void;
+}) {
   const [viewsFilter, setViewsFilter] = useState<ViewsFilter>("all");
 
   const impactRates = [
-    { Icon: IgClock, label: "Skip rate", rate: "22.1%", status: "Lower", positive: true },
-    { Icon: IgShare, label: "Share rate", rate: "0.1%", status: "Lower", positive: true },
-    { Icon: IgHeart, label: "Like rate", rate: "8.8%", status: "Lower", positive: true },
-    { Icon: IgBookmark, label: "Save rate", rate: "0.0%", status: "Lower", positive: true },
-    { Icon: IgRepost, label: "Repost rate", rate: "0.1%", status: "Lower", positive: true },
-    { Icon: IgComment, label: "Comment rate", rate: "0.2%", status: "Higher", positive: true },
+    {
+      key: "skip" as const,
+      Icon: IgClock,
+      label: "Skip rate",
+      rate: `${insights.rates.skip.rate.toFixed(1)}%`,
+      numRate: insights.rates.skip.rate,
+      statusSetting: insights.rates.skip.status,
+      status: calculateMetricStatus("Skip rate", insights.rates.skip.rate, insights.rates.skip.status),
+    },
+    {
+      key: "share" as const,
+      Icon: IgShare,
+      label: "Share rate",
+      rate: `${insights.rates.share.rate.toFixed(1)}%`,
+      numRate: insights.rates.share.rate,
+      statusSetting: insights.rates.share.status,
+      status: calculateMetricStatus("Share rate", insights.rates.share.rate, insights.rates.share.status),
+    },
+    {
+      key: "like" as const,
+      Icon: IgHeart,
+      label: "Like rate",
+      rate: `${insights.rates.like.rate.toFixed(1)}%`,
+      numRate: insights.rates.like.rate,
+      statusSetting: insights.rates.like.status,
+      status: calculateMetricStatus("Like rate", insights.rates.like.rate, insights.rates.like.status),
+    },
+    {
+      key: "save" as const,
+      Icon: IgBookmark,
+      label: "Save rate",
+      rate: `${insights.rates.save.rate.toFixed(1)}%`,
+      numRate: insights.rates.save.rate,
+      statusSetting: insights.rates.save.status,
+      status: calculateMetricStatus("Save rate", insights.rates.save.rate, insights.rates.save.status),
+    },
+    {
+      key: "repost" as const,
+      Icon: IgRepost,
+      label: "Repost rate",
+      rate: `${insights.rates.repost.rate.toFixed(1)}%`,
+      numRate: insights.rates.repost.rate,
+      statusSetting: insights.rates.repost.status,
+      status: calculateMetricStatus("Repost rate", insights.rates.repost.rate, insights.rates.repost.status),
+    },
+    {
+      key: "comment" as const,
+      Icon: IgComment,
+      label: "Comment rate",
+      rate: `${insights.rates.comment.rate.toFixed(1)}%`,
+      numRate: insights.rates.comment.rate,
+      statusSetting: insights.rates.comment.status,
+      status: calculateMetricStatus("Comment rate", insights.rates.comment.rate, insights.rates.comment.status),
+    },
   ];
 
-  const viewSources = [
-    { label: "Reels tab", pct: "22.9%", width: 22.9 },
-    { label: "Feed", pct: "8.6%", width: 8.6 },
-    { label: "Profile", pct: "4.5%", width: 4.5 },
-    { label: "Stories", pct: "3.4%", width: 3.4 },
-    { label: "Explore", pct: "1.5%", width: 1.5 },
+  const viewSources: Array<{ key: keyof typeof insights.sources; label: string; pct: string; width: number }> = [
+    { key: "reelsTab", label: "Reels tab", pct: `${insights.sources.reelsTab.toFixed(1)}%`, width: insights.sources.reelsTab },
+    { key: "explore", label: "Explore", pct: `${insights.sources.explore.toFixed(1)}%`, width: insights.sources.explore },
+    { key: "feed", label: "Feed", pct: `${insights.sources.feed.toFixed(1)}%`, width: insights.sources.feed },
+    { key: "profile", label: "Profile", pct: `${insights.sources.profile.toFixed(1)}%`, width: insights.sources.profile },
+    { key: "search", label: "Search", pct: `${insights.sources.search.toFixed(1)}%`, width: insights.sources.search },
   ];
+
+  // Dynamic Views Spline SVG calculations
+  const maxViewsCeiling = useMemo(() => {
+    let maxVal = insights.views;
+    insights.viewsThisReelPoints.forEach((p) => {
+      if (p.value > maxVal) maxVal = p.value;
+    });
+    insights.viewsTypicalPoints.forEach((p) => {
+      if (p.value > maxVal) maxVal = p.value;
+    });
+    return GraphSplineMath.computeMilestoneCeiling(maxVal, 2000);
+  }, [insights]);
+
+  const thisReelSvgPath = useMemo(() => {
+    return GraphSplineMath.buildSvgPath(insights.viewsThisReelPoints, {
+      maxX: 360,
+      maxY: maxViewsCeiling,
+      minY: 0,
+      width: 340,
+      height: 120,
+      paddingTop: 12,
+      paddingBottom: 15,
+      paddingLeft: 5,
+      paddingRight: 5,
+    });
+  }, [insights.viewsThisReelPoints, maxViewsCeiling]);
+
+  const typicalReelSvgPath = useMemo(() => {
+    return GraphSplineMath.buildSvgPath(insights.viewsTypicalPoints, {
+      maxX: 360,
+      maxY: maxViewsCeiling,
+      minY: 0,
+      width: 340,
+      height: 120,
+      paddingTop: 12,
+      paddingBottom: 15,
+      paddingLeft: 5,
+      paddingRight: 5,
+    });
+  }, [insights.viewsTypicalPoints, maxViewsCeiling]);
+
+  // Watch Retention Spline SVG
+  const watchRetentionSvgPath = useMemo(() => {
+    const maxSec = insights.reelDurationSeconds || 13;
+    return GraphSplineMath.buildSvgPath(insights.watchRetentionPoints, {
+      maxX: maxSec,
+      maxY: 100,
+      minY: 0,
+      width: 340,
+      height: 100,
+      paddingTop: 10,
+      paddingBottom: 10,
+      paddingLeft: 5,
+      paddingRight: 5,
+    });
+  }, [insights.watchRetentionPoints, insights.reelDurationSeconds]);
 
   return (
     <div className="iv-tab-content">
@@ -174,28 +358,134 @@ function OverviewTab({ imgUrl }: { imgUrl: string }) {
       <section className="iv-section">
         <InfoTitle>Summary</InfoTitle>
         <div className="iv-summary-grid">
-          <div className="iv-card">
-            <span className="iv-card-label">Views</span>
-            <strong className="iv-card-val">12,910</strong>
+          {/* Card 1: Views */}
+          <div
+            onClick={
+              isEditMode
+                ? () =>
+                    onEditText("Edit Views Count", insights.views, (v) => {
+                      const parsed = GraphSplineMath.parseViews(v);
+                      if (parsed >= 0) {
+                        insights.views = parsed;
+                        if (insights.viewsThisReelPoints.length > 0) {
+                          insights.viewsThisReelPoints[insights.viewsThisReelPoints.length - 1].value = parsed;
+                        }
+                      }
+                    })
+                : undefined
+            }
+            className={`iv-card ${
+              isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
+            }`}
+            title={isEditMode ? "Click to edit Views" : undefined}
+          >
+            <span className="iv-card-label flex items-center justify-between">
+              <span>Views</span>
+              {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
+            </span>
+            <strong className="iv-card-val">{insights.views.toLocaleString()}</strong>
           </div>
-          <div className="iv-card">
-            <span className="iv-card-label">Viewers</span>
-            <strong className="iv-card-val">4,168</strong>
+
+          {/* Card 2: Viewers */}
+          <div
+            onClick={
+              isEditMode
+                ? () =>
+                    onEditText("Edit Viewers / Reach", insights.viewers, (v) => {
+                      const parsed = GraphSplineMath.parseViews(v);
+                      if (parsed >= 0) insights.viewers = parsed;
+                    })
+                : undefined
+            }
+            className={`iv-card ${
+              isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
+            }`}
+            title={isEditMode ? "Click to edit Viewers" : undefined}
+          >
+            <span className="iv-card-label flex items-center justify-between">
+              <span>Viewers</span>
+              {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
+            </span>
+            <strong className="iv-card-val">{insights.viewers.toLocaleString()}</strong>
           </div>
-          <div className="iv-card">
-            <span className="iv-card-label">Average watch time</span>
-            <strong className="iv-card-val">13s</strong>
+
+          {/* Card 3: Avg watch time */}
+          <div
+            onClick={
+              isEditMode
+                ? () =>
+                    onEditText("Edit Average Watch Time", insights.averageWatchTime || "13s", (v) => {
+                      insights.averageWatchTime = v.trim() || "13s";
+                    })
+                : undefined
+            }
+            className={`iv-card ${
+              isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
+            }`}
+            title={isEditMode ? "Click to edit Average Watch Time" : undefined}
+          >
+            <span className="iv-card-label flex items-center justify-between">
+              <span>Average watch time</span>
+              {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
+            </span>
+            <strong className="iv-card-val">{insights.averageWatchTime || "13s"}</strong>
           </div>
-          <div className="iv-card">
-            <span className="iv-card-label">Follows</span>
-            <strong className="iv-card-val">0</strong>
+
+          {/* Card 4: Follows */}
+          <div
+            onClick={
+              isEditMode
+                ? () =>
+                    onEditText("Edit Follows (Summary)", insights.followsSummary, (v) => {
+                      const parsed = parseInt(v) || 0;
+                      insights.followsSummary = parsed;
+                    })
+                : undefined
+            }
+            className={`iv-card ${
+              isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
+            }`}
+            title={isEditMode ? "Click to edit Follows" : undefined}
+          >
+            <span className="iv-card-label flex items-center justify-between">
+              <span>Follows</span>
+              {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
+            </span>
+            <strong className="iv-card-val">{insights.followsSummary.toLocaleString()}</strong>
           </div>
         </div>
       </section>
 
-      {/* Views Over Time */}
+      {/* Views Over Time Graph */}
       <section className="iv-section">
-        <InfoTitle>Views over time</InfoTitle>
+        <div className="flex items-center justify-between mb-2">
+          <InfoTitle>Views over time</InfoTitle>
+          {isEditMode && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onOpenGraphEditor("this_reel")}
+                className="px-2 py-0.5 rounded-full bg-pink-50 text-[#bc1888] hover:bg-pink-100 font-bold text-[11px] border border-pink-200 cursor-pointer flex items-center gap-1 transition-colors shadow-2xs"
+                title="Edit This Reel curve"
+              >
+                <i className="dot magenta" />
+                <span>This reel</span>
+                <Pencil size={10} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenGraphEditor("typical_reel")}
+                className="px-2 py-0.5 rounded-full bg-gray-50 text-[#555] hover:bg-gray-100 font-bold text-[11px] border border-gray-200 cursor-pointer flex items-center gap-1 transition-colors shadow-2xs"
+                title="Edit Typical Reel curve"
+              >
+                <i className="dot dashed" />
+                <span>Typical</span>
+                <Pencil size={10} />
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="iv-filter-pills" role="tablist">
           <button
             type="button"
@@ -220,47 +510,106 @@ function OverviewTab({ imgUrl }: { imgUrl: string }) {
           </button>
         </div>
 
-        <div className="iv-chart-container">
-          <div className="iv-chart-y-axis">
-            <span>100K</span>
-            <span>50K</span>
-            <span>0</span>
+        <div className="iv-chart-container relative group">
+          {/* Y-Axis scale (Clickable in edit mode to customize Max/Mid/Start values) */}
+          <div
+            onClick={isEditMode ? onEditYAxis : undefined}
+            className={`iv-chart-y-axis ${isEditMode ? "cursor-pointer hover:text-[#bc1888]" : ""} transition-colors`}
+            title={isEditMode ? "Click to edit Y-Axis values" : undefined}
+          >
+            <span className="font-bold">
+              {insights.viewsGraphMax || GraphSplineMath.formatViews(maxViewsCeiling)}
+            </span>
+            <span className="font-bold">
+              {insights.viewsGraphMid || GraphSplineMath.formatViews(maxViewsCeiling / 2)}
+            </span>
+            <span className="font-bold">{insights.viewsGraphStart || "0"}</span>
           </div>
-          <div className="iv-chart-area">
-            <svg viewBox="0 0 340 120" preserveAspectRatio="none" className="iv-views-svg">
-              <line x1="0" y1="10" x2="340" y2="10" className="iv-grid-line" />
+
+          <div
+            className={`iv-chart-area ${isEditMode ? "cursor-pointer" : ""}`}
+            onClick={isEditMode ? () => onOpenGraphEditor("this_reel") : undefined}
+            title={isEditMode ? "Click to open interactive graph drag editor" : undefined}
+          >
+            <svg
+              viewBox="0 0 340 120"
+              preserveAspectRatio="none"
+              className="iv-views-svg w-full h-full"
+            >
+              <line x1="0" y1="12" x2="340" y2="12" className="iv-grid-line" />
               <line x1="0" y1="60" x2="340" y2="60" className="iv-grid-line" />
-              <line x1="0" y1="110" x2="340" y2="110" className="iv-grid-line" />
+              <line x1="0" y1="108" x2="340" y2="108" className="iv-grid-line" />
+
               {/* Typical reel dashed curve */}
-              <path
-                d="M 5 110 Q 50 70, 120 56 T 240 45 T 335 40"
-                className="iv-typical-curve"
-                fill="none"
-              />
-              {/* This reel magenta curve */}
-              <path
-                d="M 5 110 L 25 100 L 90 99 L 180 99 L 260 99"
-                className="iv-reel-curve"
-                fill="none"
-              />
+              {typicalReelSvgPath && (
+                <path
+                  d={typicalReelSvgPath}
+                  className="iv-typical-curve"
+                  fill="none"
+                  strokeWidth="2.2"
+                  strokeDasharray="4,4"
+                />
+              )}
+
+              {/* This reel magenta spline curve */}
+              {thisReelSvgPath && (
+                <path
+                  d={thisReelSvgPath}
+                  className="iv-reel-curve"
+                  fill="none"
+                  strokeWidth="2.6"
+                />
+              )}
             </svg>
-            <div className="iv-chart-x-axis">
-              <span>Aug 8</span>
-              <span>Aug 15</span>
-              <span>Aug 22</span>
+
+            {/* X-Axis Dates */}
+            <div
+              className={`iv-chart-x-axis ${isEditMode ? "cursor-pointer hover:text-[#bc1888]" : ""} transition-colors`}
+              onClick={
+                isEditMode
+                  ? (e) => {
+                      e.stopPropagation();
+                      onEditText("Edit Start Date Milestone", insights.viewsGraphDates[0], (v) => {
+                        insights.viewsGraphDates[0] = v.trim() || insights.viewsGraphDates[0];
+                      });
+                    }
+                  : undefined
+              }
+              title={isEditMode ? "Click to edit date milestones" : undefined}
+            >
+              <span>{insights.viewsGraphDates[0]}</span>
+              <span>{insights.viewsGraphDates[1]}</span>
+              <span>{insights.viewsGraphDates[2]}</span>
             </div>
           </div>
         </div>
 
+        {/* Legend buttons to select curve to edit */}
         <div className="iv-chart-legend">
-          <span className="iv-legend-item">
+          <button
+            type="button"
+            onClick={isEditMode ? () => onOpenGraphEditor("this_reel") : undefined}
+            className={`iv-legend-item bg-transparent border-none ${
+              isEditMode ? "cursor-pointer hover:opacity-80" : "cursor-default"
+            } flex items-center gap-1 font-bold text-xs`}
+            title={isEditMode ? "Click to edit This Reel curve" : undefined}
+          >
             <i className="dot magenta" />
-            This reel
-          </span>
-          <span className="iv-legend-item">
+            <span>This reel</span>
+            {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+          </button>
+          <button
+            type="button"
+            onClick={isEditMode ? () => onOpenGraphEditor("typical_reel") : undefined}
+            className={`iv-legend-item bg-transparent border-none ${
+              isEditMode ? "cursor-pointer hover:opacity-80" : "cursor-default"
+            } flex items-center gap-1 font-bold text-xs`}
+            title={isEditMode ? "Click to edit Typical Reel curve" : undefined}
+          >
             <i className="dot dashed" />
-            Your typical reel
-          </span>
+            <span>Your typical reel</span>
+            {isEditMode && <Pencil size={10} className="text-[#737373]" />}
+          </button>
         </div>
       </section>
 
@@ -269,15 +618,32 @@ function OverviewTab({ imgUrl }: { imgUrl: string }) {
         <InfoTitle>What impacts your views</InfoTitle>
         <p className="iv-section-sub">Rates are listed in order of importance to reach.</p>
         <div className="iv-rates-list">
-          {impactRates.map(({ Icon, label, rate, status }) => (
-            <div className="iv-rate-row" key={label}>
+          {impactRates.map(({ key, Icon, label, rate, numRate, statusSetting, status }) => (
+            <div
+              key={label}
+              onClick={isEditMode ? () => onEditRate(key, label, numRate, statusSetting) : undefined}
+              className={`iv-rate-row transition-colors ${
+                isEditMode ? "cursor-pointer hover:bg-pink-50/50" : ""
+              }`}
+              title={isEditMode ? `Click to edit ${label}` : undefined}
+            >
               <div className="iv-rate-badge">
                 <Icon size={22} />
               </div>
-              <span className="iv-rate-label">{label}</span>
-              <div className="iv-rate-right">
+              <span className="iv-rate-label flex items-center gap-1">
+                <span>{label}</span>
+                {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+              </span>
+              <div className="iv-rate-right flex items-center gap-2">
                 <strong className="iv-rate-pct">{rate}</strong>
-                <span className="iv-rate-tag green">{status}</span>
+                <span
+                  className={`iv-rate-tag ${
+                    status.isGreen ? "green" : status.isRed ? "red" : "grey"
+                  }`}
+                  style={{ color: status.color }}
+                >
+                  {status.text}
+                </span>
               </div>
             </div>
           ))}
@@ -286,37 +652,81 @@ function OverviewTab({ imgUrl }: { imgUrl: string }) {
 
       {/* How long people watched your reel */}
       <section className="iv-section">
-        <InfoTitle>How long people watched your reel</InfoTitle>
-        <div className="iv-video-card-wrap">
+        <div className="flex items-center justify-between mb-2">
+          <div
+            className={`flex items-center gap-1.5 ${
+              isEditMode ? "cursor-pointer hover:opacity-80" : ""
+            }`}
+            onClick={isEditMode ? () => onOpenGraphEditor("watch_retention") : undefined}
+            title={isEditMode ? "Click to edit watch retention graph" : undefined}
+          >
+            <InfoTitle>How long people watched your reel</InfoTitle>
+            {isEditMode && <Pencil size={12} className="text-[#bc1888]" />}
+          </div>
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={() => onOpenGraphEditor("watch_retention")}
+              className="px-2.5 py-0.5 rounded-full bg-pink-50 text-[#bc1888] hover:bg-pink-100 font-bold text-[11px] border border-pink-200 cursor-pointer flex items-center gap-1 transition-colors shadow-2xs"
+              title="Edit Watch Retention curve"
+            >
+              <Pencil size={10} />
+              <span>Edit Graph</span>
+            </button>
+          )}
+        </div>
+
+        <div
+          className={`iv-video-card-wrap ${isEditMode ? "cursor-pointer group" : ""}`}
+          onClick={isEditMode ? () => onOpenGraphEditor("watch_retention") : undefined}
+          title={isEditMode ? "Click to edit watch retention curve & duration" : undefined}
+        >
           <div className="iv-video-card">
-            <img src={imgUrl} alt="Video preview" width={110} height={165} className="object-cover" />
+            <img
+              src={insights.customThumbnailUrl || imgUrl}
+              alt="Video preview"
+              width={110}
+              height={165}
+              className="object-cover"
+            />
             <div className="iv-video-play-badge">
               <Play size={20} fill="#ffffff" stroke="#ffffff" />
             </div>
           </div>
         </div>
 
-        <div className="iv-chart-container">
+        <div
+          className={`iv-chart-container ${isEditMode ? "cursor-pointer group" : ""}`}
+          onClick={isEditMode ? () => onOpenGraphEditor("watch_retention") : undefined}
+          title={isEditMode ? "Click to open interactive watch retention curve editor" : undefined}
+        >
           <div className="iv-chart-y-axis">
             <span>100%</span>
             <span>50%</span>
             <span>0</span>
           </div>
           <div className="iv-chart-area">
-            <svg viewBox="0 0 340 100" preserveAspectRatio="none" className="iv-retention-svg">
+            <svg
+              viewBox="0 0 340 100"
+              preserveAspectRatio="none"
+              className="iv-retention-svg w-full h-full"
+            >
               <line x1="0" y1="10" x2="340" y2="10" className="iv-grid-line" />
               <line x1="0" y1="50" x2="340" y2="50" className="iv-grid-line" />
               <line x1="0" y1="90" x2="340" y2="90" className="iv-grid-line" />
-              {/* Retention curve */}
-              <path
-                d="M 5 10 L 45 22 L 95 30 L 115 70 L 155 75 L 210 80 L 260 85 L 335 88"
-                className="iv-reel-curve"
-                fill="none"
-              />
+              {/* Retention Spline Curve */}
+              {watchRetentionSvgPath && (
+                <path
+                  d={watchRetentionSvgPath}
+                  className="iv-reel-curve"
+                  fill="none"
+                  strokeWidth="2.6"
+                />
+              )}
             </svg>
             <div className="iv-chart-x-axis">
               <span>0:00</span>
-              <span>0:13</span>
+              <span>0:{insights.reelDurationSeconds.toString().padStart(2, "0")}</span>
             </div>
           </div>
         </div>
@@ -326,12 +736,32 @@ function OverviewTab({ imgUrl }: { imgUrl: string }) {
       <section className="iv-section">
         <InfoTitle>Top sources of views</InfoTitle>
         <div className="iv-sources-list">
-          {viewSources.map(({ label, pct, width }) => (
-            <div className="iv-source-row" key={label}>
-              <span className="iv-source-label">{label}</span>
+          {viewSources.map(({ key, label, pct, width }) => (
+            <div
+              key={label}
+              onClick={
+                isEditMode
+                  ? () =>
+                      onEditPercentage(`Edit ${label} %`, width, (v) => {
+                        insights.sources[key] = v;
+                      })
+                  : undefined
+              }
+              className={`iv-source-row transition-colors ${
+                isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+              }`}
+              title={isEditMode ? `Click to edit ${label} %` : undefined}
+            >
+              <span className="iv-source-label flex items-center gap-1">
+                <span>{label}</span>
+                {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+              </span>
               <div className="iv-source-bar-row">
                 <div className="iv-progress-track">
-                  <div className="iv-progress-fill" style={{ width: `${width}%` }} />
+                  <div
+                    className="iv-progress-fill"
+                    style={{ width: `${Math.min(100, Math.max(0, width))}%` }}
+                  />
                 </div>
                 <strong className="iv-source-pct">{pct}</strong>
               </div>
@@ -355,30 +785,99 @@ function OverviewTab({ imgUrl }: { imgUrl: string }) {
   );
 }
 
-function EngagementTab({ imgUrl }: { imgUrl: string }) {
-  const interactions = [
-    { label: "Likes", val: "368" },
-    { label: "Comments", val: "10" },
-    { label: "Reposts", val: "4" },
-    { label: "Shares", val: "4" },
-    { label: "Saves", val: "0" },
+function EngagementTab({
+  insights,
+  imgUrl,
+  isEditMode,
+  onEditText,
+  onOpenGraphEditor,
+}: {
+  insights: PostInsightsData;
+  imgUrl: string;
+  isEditMode: boolean;
+  onEditText: (title: string, currentVal: string | number, onSave: (v: string) => void) => void;
+  onOpenGraphEditor: (target: "likes_retention") => void;
+}) {
+  const interactions: Array<{
+    field: "likes" | "comments" | "reposts" | "shares" | "saves";
+    label: string;
+    val: string;
+    numVal: number;
+  }> = [
+    { field: "likes", label: "Likes", val: GraphSplineMath.formatViews(insights.likes), numVal: insights.likes },
+    { field: "comments", label: "Comments", val: GraphSplineMath.formatViews(insights.comments), numVal: insights.comments },
+    { field: "reposts", label: "Reposts", val: GraphSplineMath.formatViews(insights.reposts), numVal: insights.reposts },
+    { field: "shares", label: "Shares", val: GraphSplineMath.formatViews(insights.shares), numVal: insights.shares },
+    { field: "saves", label: "Saves", val: GraphSplineMath.formatViews(insights.saves), numVal: insights.saves },
   ];
+
+  // Likes Retention Spline Curve
+  const likesSvgPath = useMemo(() => {
+    const maxSec = insights.reelDurationSeconds || 13;
+    return GraphSplineMath.buildSvgPath(insights.likesRetentionPoints, {
+      maxX: maxSec,
+      maxY: 20,
+      minY: 0,
+      width: 340,
+      height: 100,
+      paddingTop: 10,
+      paddingBottom: 10,
+      paddingLeft: 5,
+      paddingRight: 5,
+    });
+  }, [insights.likesRetentionPoints, insights.reelDurationSeconds]);
 
   return (
     <div className="iv-tab-content">
       {/* Top follows row */}
-      <div className="iv-follows-row">
-        <span className="iv-follows-label">Follows</span>
-        <strong className="iv-follows-val">0</strong>
+      <div
+        onClick={
+          isEditMode
+            ? () =>
+                onEditText("Edit Follows (Engagement)", insights.followsEngagement, (v) => {
+                  insights.followsEngagement = parseInt(v) || 0;
+                })
+            : undefined
+        }
+        className={`iv-follows-row transition-colors ${
+          isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+        }`}
+        title={isEditMode ? "Click to edit Follows" : undefined}
+      >
+        <span className="iv-follows-label flex items-center gap-1">
+          <span>Follows</span>
+          {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+        </span>
+        <strong className="iv-follows-val">
+          {insights.followsEngagement.toLocaleString()}
+        </strong>
       </div>
 
       {/* Interactions list */}
       <section className="iv-section">
         <InfoTitle>Interactions</InfoTitle>
         <div className="iv-list-table">
-          {interactions.map(({ label, val }) => (
-            <div className="iv-table-row" key={label}>
-              <span>{label}</span>
+          {interactions.map(({ field, label, val, numVal }) => (
+            <div
+              key={label}
+              onClick={
+                isEditMode
+                  ? () =>
+                      onEditText(`Edit ${label}`, numVal, (v) => {
+                        const parsed = GraphSplineMath.parseViews(v);
+                        if (parsed >= 0) insights[field] = parsed;
+                      })
+                  : undefined
+              }
+              className={`iv-table-row transition-colors ${
+                isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+              }`}
+              title={isEditMode ? `Click to edit ${label}` : undefined}
+            >
+              <span className="flex items-center gap-1">
+                <span>{label}</span>
+                {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+              </span>
               <strong>{val}</strong>
             </div>
           ))}
@@ -387,37 +886,80 @@ function EngagementTab({ imgUrl }: { imgUrl: string }) {
 
       {/* When people liked your reel */}
       <section className="iv-section no-border">
-        <InfoTitle>When people liked your reel</InfoTitle>
-        <div className="iv-video-card-wrap">
+        <div className="flex items-center justify-between mb-2">
+          <div
+            className={`flex items-center gap-1.5 ${
+              isEditMode ? "cursor-pointer hover:opacity-80" : ""
+            }`}
+            onClick={isEditMode ? () => onOpenGraphEditor("likes_retention") : undefined}
+            title={isEditMode ? "Click to edit likes retention graph" : undefined}
+          >
+            <InfoTitle>When people liked your reel</InfoTitle>
+            {isEditMode && <Pencil size={12} className="text-[#bc1888]" />}
+          </div>
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={() => onOpenGraphEditor("likes_retention")}
+              className="px-2.5 py-0.5 rounded-full bg-pink-50 text-[#bc1888] hover:bg-pink-100 font-bold text-[11px] border border-pink-200 cursor-pointer flex items-center gap-1 transition-colors shadow-2xs"
+              title="Edit Likes Retention curve"
+            >
+              <Pencil size={10} />
+              <span>Edit Graph</span>
+            </button>
+          )}
+        </div>
+
+        <div
+          className={`iv-video-card-wrap ${isEditMode ? "cursor-pointer group" : ""}`}
+          onClick={isEditMode ? () => onOpenGraphEditor("likes_retention") : undefined}
+          title={isEditMode ? "Click to edit likes retention curve & timing" : undefined}
+        >
           <div className="iv-video-card">
-            <img src={imgUrl} alt="Video preview" width={110} height={165} className="object-cover" />
+            <img
+              src={insights.customThumbnailUrl || imgUrl}
+              alt="Video preview"
+              width={110}
+              height={165}
+              className="object-cover"
+            />
             <div className="iv-video-play-badge">
               <Play size={20} fill="#ffffff" stroke="#ffffff" />
             </div>
           </div>
         </div>
 
-        <div className="iv-chart-container">
+        <div
+          className={`iv-chart-container ${isEditMode ? "cursor-pointer group" : ""}`}
+          onClick={isEditMode ? () => onOpenGraphEditor("likes_retention") : undefined}
+          title={isEditMode ? "Click to open interactive likes retention curve editor" : undefined}
+        >
           <div className="iv-chart-y-axis">
             <span>20%</span>
             <span>10%</span>
             <span>0</span>
           </div>
           <div className="iv-chart-area">
-            <svg viewBox="0 0 340 100" preserveAspectRatio="none" className="iv-retention-svg">
+            <svg
+              viewBox="0 0 340 100"
+              preserveAspectRatio="none"
+              className="iv-retention-svg w-full h-full"
+            >
               <line x1="0" y1="10" x2="340" y2="10" className="iv-grid-line" />
               <line x1="0" y1="50" x2="340" y2="50" className="iv-grid-line" />
               <line x1="0" y1="90" x2="340" y2="90" className="iv-grid-line" />
-              {/* Liked curve from page 4.jpeg */}
-              <path
-                d="M 5 45 L 35 20 L 70 52 L 95 60 L 130 80 L 160 52 L 205 60 L 235 84 L 270 96 L 305 92 L 335 86"
-                className="iv-reel-curve"
-                fill="none"
-              />
+              {likesSvgPath && (
+                <path
+                  d={likesSvgPath}
+                  className="iv-reel-curve"
+                  fill="none"
+                  strokeWidth="2.6"
+                />
+              )}
             </svg>
             <div className="iv-chart-x-axis">
               <span>0:00</span>
-              <span>0:13</span>
+              <span>0:{insights.reelDurationSeconds.toString().padStart(2, "0")}</span>
             </div>
           </div>
         </div>
@@ -426,30 +968,41 @@ function EngagementTab({ imgUrl }: { imgUrl: string }) {
   );
 }
 
-function AudienceTab() {
-  const [detailTab, setDetailTab] = useState<AudienceDetailTab>("country");
+function AudienceTab({
+  insights,
+  isEditMode,
+  onEditPercentage,
+}: {
+  insights: PostInsightsData;
+  isEditMode: boolean;
+  onEditPercentage: (title: string, currentVal: number, onSave: (v: number) => void) => void;
+}) {
+  const [detailTab, setDetailTab] = useState<AudienceDetailTab>("age");
 
-  const countryData: AudienceItem[] = [
-    { label: "United States", pct: "33.4%", width: 33.4 },
-    { label: "India", pct: "30.6%", width: 30.6 },
-    { label: "Brazil", pct: "7.4%", width: 7.4 },
-    { label: "Indonesia", pct: "2.4%", width: 2.4 },
-    { label: "Canada", pct: "2.4%", width: 2.4 },
+  const countryData = insights.countries.map((c) => ({
+    label: c.name,
+    pct: `${c.percentage.toFixed(1)}%`,
+    width: c.percentage,
+  }));
+
+  const ageData: Array<{ key: keyof typeof insights.age; label: string; pct: string; width: number }> = [
+    { key: "age13_17", label: "13-17", pct: `${insights.age.age13_17.toFixed(1)}%`, width: insights.age.age13_17 },
+    { key: "age18_24", label: "18-24", pct: `${insights.age.age18_24.toFixed(1)}%`, width: insights.age.age18_24 },
+    { key: "age25_34", label: "25-34", pct: `${insights.age.age25_34.toFixed(1)}%`, width: insights.age.age25_34 },
+    { key: "age35_44", label: "35-44", pct: `${insights.age.age35_44.toFixed(1)}%`, width: insights.age.age35_44 },
+    { key: "age45_54", label: "45-54", pct: `${insights.age.age45_54.toFixed(1)}%`, width: insights.age.age45_54 },
+    { key: "age55_64", label: "55-64", pct: `${insights.age.age55_64.toFixed(1)}%`, width: insights.age.age55_64 },
+    { key: "age65Plus", label: "65+", pct: `${insights.age.age65Plus.toFixed(1)}%`, width: insights.age.age65Plus },
   ];
 
-  const ageData: AudienceItem[] = [
-    { label: "13-17", pct: "5.4%", width: 5.4 },
-    { label: "18-24", pct: "42.3%", width: 42.3 },
-    { label: "25-34", pct: "36.9%", width: 36.9 },
-    { label: "35-44", pct: "9.5%", width: 9.5 },
-    { label: "45-54", pct: "3.1%", width: 3.1 },
-    { label: "55-64", pct: "1.3%", width: 1.3 },
-    { label: "65+", pct: "1.5%", width: 1.5 },
-  ];
-
-  const genderData: AudienceItem[] = [
-    { label: "Men", pct: "81.9%", width: 81.9 },
-    { label: "Women", pct: "18.1%", width: 18.1, purple: true },
+  const genderData = [
+    { label: "Men", pct: `${insights.gender.men.toFixed(1)}%`, width: insights.gender.men },
+    {
+      label: "Women",
+      pct: `${insights.gender.women.toFixed(1)}%`,
+      width: insights.gender.women,
+      purple: true,
+    },
   ];
 
   const currentDetails =
@@ -461,22 +1014,62 @@ function AudienceTab() {
       <section className="iv-section">
         <InfoTitle>Who viewed your reel</InfoTitle>
         <div className="iv-sources-list">
-          <div className="iv-source-row">
-            <span className="iv-source-label">Followers</span>
+          <div
+            onClick={
+              isEditMode
+                ? () =>
+                    onEditPercentage("Edit Followers %", insights.followersPct, (v) => {
+                      insights.followersPct = v;
+                      insights.nonFollowersPct = Number((100 - v).toFixed(1));
+                    })
+                : undefined
+            }
+            className={`iv-source-row transition-colors ${
+              isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+            }`}
+            title={isEditMode ? "Click to edit Followers %" : undefined}
+          >
+            <span className="iv-source-label flex items-center gap-1">
+              <span>Followers</span>
+              {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+            </span>
             <div className="iv-source-bar-row">
               <div className="iv-progress-track">
-                <div className="iv-progress-fill magenta" style={{ width: "20.9%" }} />
+                <div
+                  className="iv-progress-fill magenta"
+                  style={{ width: `${insights.followersPct}%` }}
+                />
               </div>
-              <strong className="iv-source-pct">20.9%</strong>
+              <strong className="iv-source-pct">{insights.followersPct.toFixed(1)}%</strong>
             </div>
           </div>
-          <div className="iv-source-row">
-            <span className="iv-source-label">Non-followers</span>
+          <div
+            onClick={
+              isEditMode
+                ? () =>
+                    onEditPercentage("Edit Non-Followers %", insights.nonFollowersPct, (v) => {
+                      insights.nonFollowersPct = v;
+                      insights.followersPct = Number((100 - v).toFixed(1));
+                    })
+                : undefined
+            }
+            className={`iv-source-row transition-colors ${
+              isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+            }`}
+            title={isEditMode ? "Click to edit Non-Followers %" : undefined}
+          >
+            <span className="iv-source-label flex items-center gap-1">
+              <span>Non-followers</span>
+              {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+            </span>
             <div className="iv-source-bar-row">
               <div className="iv-progress-track">
-                <div className="iv-progress-fill purple" style={{ width: "79.1%" }} />
+                <div
+                  className="iv-progress-fill purple"
+                  style={{ width: `${insights.nonFollowersPct}%` }}
+                />
               </div>
-              <strong className="iv-source-pct">79.1%</strong>
+              <strong className="iv-source-pct">{insights.nonFollowersPct.toFixed(1)}%</strong>
             </div>
           </div>
         </div>
@@ -510,14 +1103,53 @@ function AudienceTab() {
         </div>
 
         <div className="iv-sources-list">
-          {currentDetails.map((item) => (
-            <div className="iv-source-row" key={item.label}>
-              <span className="iv-source-label">{item.label}</span>
+          {currentDetails.map((item, idx) => (
+            <div
+              key={item.label}
+              onClick={
+                isEditMode
+                  ? () => {
+                      if (detailTab === "age") {
+                        const key = (item as any).key as keyof typeof insights.age;
+                        onEditPercentage(`Edit Age ${item.label} %`, item.width, (v) => {
+                          insights.age[key] = v;
+                        });
+                      } else if (detailTab === "gender") {
+                        onEditPercentage(`Edit ${item.label} %`, item.width, (v) => {
+                          if (item.label === "Men") {
+                            insights.gender.men = v;
+                            insights.gender.women = Number((100 - v).toFixed(1));
+                          } else {
+                            insights.gender.women = v;
+                            insights.gender.men = Number((100 - v).toFixed(1));
+                          }
+                        });
+                      } else if (detailTab === "country") {
+                        onEditPercentage(`Edit ${item.label} %`, item.width, (v) => {
+                          if (insights.countries[idx]) {
+                            insights.countries[idx].percentage = v;
+                          }
+                        });
+                      }
+                    }
+                  : undefined
+              }
+              className={`iv-source-row transition-colors ${
+                isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+              }`}
+              title={isEditMode ? `Click to edit ${item.label} %` : undefined}
+            >
+              <span className="iv-source-label flex items-center gap-1">
+                <span>{item.label}</span>
+                {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+              </span>
               <div className="iv-source-bar-row">
                 <div className="iv-progress-track">
                   <div
-                    className={`iv-progress-fill ${item.purple ? "purple" : "magenta"}`}
-                    style={{ width: `${item.width}%` }}
+                    className={`iv-progress-fill ${
+                      (item as any).purple ? "purple" : "magenta"
+                    }`}
+                    style={{ width: `${Math.min(100, item.width)}%` }}
                   />
                 </div>
                 <strong className="iv-source-pct">{item.pct}</strong>
@@ -532,21 +1164,360 @@ function AudienceTab() {
 
 function InsightViewPage() {
   const [tab, setTab] = useState<Tab>("overview");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isFullModalOpen, setIsFullModalOpen] = useState(false);
+
+  // Direct Field Edit Dialog State
+  const [textDialog, setTextDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    currentVal: string | number;
+    onSave: (v: string) => void;
+  }>({
+    isOpen: false,
+    title: "",
+    currentVal: "",
+    onSave: () => {},
+  });
+
+  const [rateDialog, setRateDialog] = useState<{
+    isOpen: boolean;
+    key: "skip" | "share" | "like" | "save" | "repost" | "comment";
+    label: string;
+    currentRate: number;
+    currentStatus: "Auto" | "Higher" | "Lower" | "Typical";
+  }>({
+    isOpen: false,
+    key: "skip",
+    label: "",
+    currentRate: 0,
+    currentStatus: "Auto",
+  });
+
+  const [percentageDialog, setPercentageDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    currentVal: number;
+    onSave: (v: number) => void;
+  }>({
+    isOpen: false,
+    title: "",
+    currentVal: 0,
+    onSave: () => {},
+  });
+
+  const [yAxisDialog, setYAxisDialog] = useState(false);
+
+  // Interactive Graph Line Drag Modal State
+  const [interactiveGraphTarget, setInteractiveGraphTarget] = useState<
+    "this_reel" | "typical_reel" | "watch_retention" | "likes_retention" | null
+  >(null);
+
   const { profile } = useProfile();
   const post = profile.posts[profile.selectedPostIndex] || profile.posts[0] || null;
+  const postId = post?.id || post?.shortcode || "default_post";
   const imgUrl = post?.thumbnail_src || post?.display_url || reelMachine;
 
+  // Load post insights tied specifically to this post ID
+  const [insights, setInsights] = useState<PostInsightsData>(() =>
+    loadPostInsights(postId, {
+      likes: post?.likes,
+      comments: post?.comments,
+      views: post?.views,
+      thumbnailUrl: imgUrl,
+    })
+  );
+
+  // Sync if selected post changes
+  useEffect(() => {
+    const loaded = loadPostInsights(postId, {
+      likes: post?.likes,
+      comments: post?.comments,
+      views: post?.views,
+      thumbnailUrl: imgUrl,
+    });
+    setInsights(loaded);
+  }, [postId, post?.likes, post?.comments, post?.views, imgUrl]);
+
+  const handleSaveInsights = (updated: PostInsightsData) => {
+    const copy = { ...updated };
+    setInsights(copy);
+    savePostInsights(copy);
+  };
+
   return (
-    <main className="iv-page">
+    <main className="iv-page min-h-screen bg-page text-ink">
       <div className="iv-phone pb-28">
-        <InsightHeader />
-        <ReelPreviewAndMetrics />
+        <InsightHeader
+          isEditMode={isEditMode}
+          onToggleEditMode={() => setIsEditMode(!isEditMode)}
+          onOpenFullModal={() => setIsFullModalOpen(true)}
+        />
+
+        {/* Edit Mode Banner when activated */}
+        {isEditMode && (
+          <div className="bg-gradient-to-r from-[#f09433]/15 via-[#dc2743]/15 to-[#bc1888]/15 border-y border-[#bc1888]/30 px-4 py-2.5 flex items-center justify-between text-xs animate-fade-in">
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles size={16} className="text-[#bc1888] shrink-0" />
+              <span className="font-bold text-ink truncate">
+                Tap any field or graph to edit
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsFullModalOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-[#bc1888] hover:bg-[#a01372] text-white font-bold text-[11px] border-none cursor-pointer transition-colors shadow-sm"
+              >
+                Customize All
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditMode(false)}
+                className="p-1 rounded text-subtle hover:text-ink bg-transparent border-none cursor-pointer"
+                title="Exit edit mode"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
+        <ReelPreviewAndMetrics
+          insights={insights}
+          displayImage={imgUrl}
+          isEditMode={isEditMode}
+          onEditField={(field, currentNum) => {
+            setTextDialog({
+              isOpen: true,
+              title: `Edit ${field.charAt(0).toUpperCase() + field.slice(1)} Count`,
+              currentVal: currentNum,
+              onSave: (v) => {
+                const parsed = GraphSplineMath.parseViews(v);
+                if (parsed >= 0) {
+                  const updated = { ...insights, [field]: parsed };
+                  handleSaveInsights(updated);
+                }
+              },
+            });
+          }}
+        />
+
         <Tabs current={tab} onChange={setTab} />
-        {tab === "overview" && <OverviewTab imgUrl={imgUrl} />}
-        {tab === "engagement" && <EngagementTab imgUrl={imgUrl} />}
-        {tab === "audience" && <AudienceTab />}
+
+        {tab === "overview" && (
+          <OverviewTab
+            insights={insights}
+            imgUrl={imgUrl}
+            isEditMode={isEditMode}
+            onEditText={(title, currentVal, onSaveField) => {
+              setTextDialog({
+                isOpen: true,
+                title,
+                currentVal,
+                onSave: (v) => {
+                  onSaveField(v);
+                  handleSaveInsights({ ...insights });
+                },
+              });
+            }}
+            onEditRate={(key, label, currentRate, currentStatus) => {
+              setRateDialog({
+                isOpen: true,
+                key,
+                label,
+                currentRate,
+                currentStatus,
+              });
+            }}
+            onEditPercentage={(title, currentVal, onSavePct) => {
+              setPercentageDialog({
+                isOpen: true,
+                title,
+                currentVal,
+                onSave: (v) => {
+                  onSavePct(v);
+                  handleSaveInsights({ ...insights });
+                },
+              });
+            }}
+            onEditYAxis={() => setYAxisDialog(true)}
+            onOpenGraphEditor={(target) => setInteractiveGraphTarget(target)}
+          />
+        )}
+        {tab === "engagement" && (
+          <EngagementTab
+            insights={insights}
+            imgUrl={imgUrl}
+            isEditMode={isEditMode}
+            onEditText={(title, currentVal, onSaveField) => {
+              setTextDialog({
+                isOpen: true,
+                title,
+                currentVal,
+                onSave: (v) => {
+                  onSaveField(v);
+                  handleSaveInsights({ ...insights });
+                },
+              });
+            }}
+            onOpenGraphEditor={(target) => setInteractiveGraphTarget(target)}
+          />
+        )}
+        {tab === "audience" && (
+          <AudienceTab
+            insights={insights}
+            isEditMode={isEditMode}
+            onEditPercentage={(title, currentVal, onSavePct) => {
+              setPercentageDialog({
+                isOpen: true,
+                title,
+                currentVal,
+                onSave: (v) => {
+                  onSavePct(v);
+                  handleSaveInsights({ ...insights });
+                },
+              });
+            }}
+          />
+        )}
+
         <FloatingBottomNav />
       </div>
+
+      {/* 1. Single Field Text / Number Dialog */}
+      <SingleTextEditDialog
+        isOpen={textDialog.isOpen}
+        onClose={() => setTextDialog((prev) => ({ ...prev, isOpen: false }))}
+        title={textDialog.title}
+        initialValue={textDialog.currentVal}
+        isNumeric={true}
+        onSave={textDialog.onSave}
+      />
+
+      {/* 2. Single Rate & Comparison Status Dialog */}
+      <SingleRateEditDialog
+        isOpen={rateDialog.isOpen}
+        onClose={() => setRateDialog((prev) => ({ ...prev, isOpen: false }))}
+        metricLabel={rateDialog.label}
+        initialRate={rateDialog.currentRate}
+        initialStatus={rateDialog.currentStatus}
+        onSave={(newRate, newStatus) => {
+          const updated: PostInsightsData = {
+            ...insights,
+            rates: {
+              ...insights.rates,
+              [rateDialog.key]: { rate: newRate, status: newStatus },
+            },
+          };
+          handleSaveInsights(updated);
+        }}
+      />
+
+      {/* 3. Single Percentage Slider Dialog */}
+      <SinglePercentageEditDialog
+        isOpen={percentageDialog.isOpen}
+        onClose={() => setPercentageDialog((prev) => ({ ...prev, isOpen: false }))}
+        title={percentageDialog.title}
+        initialValue={percentageDialog.currentVal}
+        onSave={(v) => {
+          percentageDialog.onSave(v);
+        }}
+      />
+
+      {/* 4. Y-Axis Custom Max/Mid/Start Scale Dialog */}
+      <YAxisEditDialog
+        isOpen={yAxisDialog}
+        onClose={() => setYAxisDialog(false)}
+        maxLabel={insights.viewsGraphMax || GraphSplineMath.formatViews(insights.views)}
+        midLabel={insights.viewsGraphMid || GraphSplineMath.formatViews(insights.views / 2)}
+        startLabel={insights.viewsGraphStart || "0"}
+        onSave={(max, mid, start) => {
+          const updated: PostInsightsData = {
+            ...insights,
+            viewsGraphMax: max,
+            viewsGraphMid: mid,
+            viewsGraphStart: start,
+          };
+          handleSaveInsights(updated);
+        }}
+      />
+
+      {/* 5. Comprehensive Multi-Tab Modal */}
+      <EditPostInsightModal
+        isOpen={isFullModalOpen}
+        onClose={() => setIsFullModalOpen(false)}
+        data={insights}
+        onSave={handleSaveInsights}
+      />
+
+      {/* 6. Direct Interactive Graph Line Editor Modal (This Reel, Typical Reel, Watch Retention, Likes Retention) */}
+      <InteractiveGraphEditor
+        isOpen={interactiveGraphTarget !== null}
+        onClose={() => setInteractiveGraphTarget(null)}
+        mode={
+          interactiveGraphTarget === "this_reel"
+            ? "views_this_reel"
+            : interactiveGraphTarget === "typical_reel"
+            ? "views_typical"
+            : interactiveGraphTarget === "watch_retention"
+            ? "watch_retention"
+            : "likes_retention"
+        }
+        title={
+          interactiveGraphTarget === "this_reel"
+            ? "Edit Views Curve (This Reel)"
+            : interactiveGraphTarget === "typical_reel"
+            ? "Edit Typical Reel Curve (Dashed)"
+            : interactiveGraphTarget === "watch_retention"
+            ? "Edit Watch Retention Curve (How long people watched)"
+            : "Edit Likes Curve (When people liked your reel)"
+        }
+        initialPoints={
+          interactiveGraphTarget === "this_reel"
+            ? insights.viewsThisReelPoints
+            : interactiveGraphTarget === "typical_reel"
+            ? insights.viewsTypicalPoints
+            : interactiveGraphTarget === "watch_retention"
+            ? insights.watchRetentionPoints
+            : insights.likesRetentionPoints
+        }
+        totalViews={
+          interactiveGraphTarget === "this_reel"
+            ? insights.views
+            : Math.round(insights.views * 0.6)
+        }
+        durationSeconds={insights.reelDurationSeconds}
+        onSave={(newPoints, newTotal, newDuration) => {
+          let updated: PostInsightsData;
+          if (interactiveGraphTarget === "this_reel") {
+            updated = {
+              ...insights,
+              views: newTotal,
+              viewsThisReelPoints: newPoints,
+            };
+          } else if (interactiveGraphTarget === "typical_reel") {
+            updated = {
+              ...insights,
+              viewsTypicalPoints: newPoints,
+            };
+          } else if (interactiveGraphTarget === "watch_retention") {
+            updated = {
+              ...insights,
+              watchRetentionPoints: newPoints,
+              ...(newDuration ? { reelDurationSeconds: newDuration } : {}),
+            };
+          } else {
+            updated = {
+              ...insights,
+              likesRetentionPoints: newPoints,
+              ...(newDuration ? { reelDurationSeconds: newDuration } : {}),
+            };
+          }
+          handleSaveInsights(updated);
+          setInteractiveGraphTarget(null);
+        }}
+      />
     </main>
   );
 }

@@ -17,13 +17,13 @@ import { useProfile, formatCompactNumber } from "@/lib/profile-store";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Professional dashboard — btwdorian" },
+      { title: "Professional dashboard — Instagram" },
       {
         name: "description",
         content:
           "Insights and creator tools: views, new followers, content shared, ad tools and more.",
       },
-      { property: "og:title", content: "Professional dashboard — btwdorian" },
+      { property: "og:title", content: "Professional dashboard — Instagram" },
       {
         property: "og:description",
         content:

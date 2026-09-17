@@ -13,6 +13,19 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      (window.location.pathname.endsWith("/index.html") ||
+        window.location.pathname === "/index.html" ||
+        window.location.pathname === "/home")
+    ) {
+      router.navigate({ to: "/" });
+    }
+  }, [router]);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -77,11 +90,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "btwdorian" },
-      { name: "description", content: "Social profile" },
-      { name: "author", content: "btwdorian" },
-      { property: "og:title", content: "btwdorian" },
-      { property: "og:description", content: "Social profile" },
+      { title: "Instagram" },
+      { name: "description", content: "Instagram Profile & Insights" },
+      { name: "author", content: "Instagram" },
+      { property: "og:title", content: "Instagram" },
+      { property: "og:description", content: "Instagram Profile & Insights" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },

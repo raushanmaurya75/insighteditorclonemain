@@ -1,6 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { IgHome, IgMessages, IgReels, IgSearch } from "@/components/ig-icons";
-import profilePhoto from "@/assets/profile-photo.jpg";
+import { useProfile } from "@/lib/profile-store";
+import defaultProfilePhoto from "@/assets/profile-photo.jpg";
 
 interface FloatingBottomNavProps {
   className?: string;
@@ -9,12 +10,15 @@ interface FloatingBottomNavProps {
 export function FloatingBottomNav({ className }: FloatingBottomNavProps) {
   const location = useLocation();
   const pathname = location.pathname;
+  const { profile } = useProfile();
 
   const isHome = pathname === "/" || pathname === "/home";
   const isReels = pathname === "/insight-view";
   const isDashboard = pathname === "/dashboard";
   const isInsights = pathname === "/insights";
   const isProfile = pathname === "/profile";
+
+  const avatarSrc = profile.avatarUrl || defaultProfilePhoto;
 
   return (
     <nav className={`bottom-nav ${className ?? ""}`.trim()} aria-label="Main navigation">
@@ -51,7 +55,16 @@ export function FloatingBottomNav({ className }: FloatingBottomNavProps) {
         aria-label="Profile"
         title="Profile"
       >
-        <img src={profilePhoto} alt="Profile" width={512} height={512} />
+        <img
+          src={avatarSrc}
+          alt={profile.fullName || "Profile"}
+          width={512}
+          height={512}
+          className="object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = defaultProfilePhoto;
+          }}
+        />
       </Link>
     </nav>
   );
