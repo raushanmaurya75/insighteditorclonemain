@@ -83,72 +83,80 @@ button {
   box-shadow: 0 0 28px color-mix(in oklab, var(--ink) 10%, transparent);
 }
 .profile-nav {
-  height: 69px;
-  padding: 0 27px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-}
-.profile-nav button,
-.profile-nav a {
-  border: 0;
-  background: transparent;
-  padding: 5px;
+  height: 48px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+}
+.profile-nav-btn {
+  border: 0;
+  background: transparent;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
-.profile-nav button:first-child,
-.profile-nav a:first-child {
-  justify-self: start;
-}
-.profile-nav button:last-child,
-.profile-nav a:last-child {
-  justify-self: end;
-}
-.profile-nav svg {
-  width: 28px;
-  height: 28px;
-  stroke-width: 2.1;
+.profile-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 .profile-nav .handle {
-  font-size: 27px;
-  font-weight: 750;
-  gap: 2px;
+  font-size: 20px;
+  font-weight: 700;
+  gap: 4px;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  max-width: 220px;
+}
+.profile-nav .handle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .profile-nav .handle svg {
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 .profile-nav .handle i {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: oklch(0.58 0.25 24);
+  background: #ff3040;
   margin-left: 2px;
+  flex-shrink: 0;
 }
 .profile-summary {
-  padding: 5px 22px 0;
+  padding: 2px 16px 0;
 }
 .profile-top {
   display: grid;
-  grid-template-columns: 118px 1fr;
+  grid-template-columns: 86px 1fr;
   align-items: center;
-  gap: 15px;
+  gap: 18px;
 }
 .avatar-wrap {
-  width: 118px;
-  height: 137px;
+  width: 86px;
+  height: 94px;
   position: relative;
-  padding-top: 27px;
+  padding-top: 14px;
 }
 .avatar-ring {
-  width: 106px;
-  height: 106px;
+  width: 78px;
+  height: 78px;
   border-radius: 50%;
-  padding: 4px;
-  border: 2px solid var(--line);
+  padding: 3px;
+  border: 1.5px solid var(--line);
   background: var(--background);
 }
 .avatar-ring img {
@@ -159,68 +167,82 @@ button {
 }
 .note {
   position: absolute;
-  left: 2px;
+  left: 50%;
+  transform: translateX(-50%);
   top: 0;
   z-index: 2;
   background: var(--background);
-  border-radius: 17px;
-  padding: 8px 17px;
+  border-radius: 12px;
+  padding: 3px 8px;
   text-align: center;
   color: var(--subtle);
-  box-shadow: 0 2px 14px color-mix(in oklab, var(--ink) 14%, transparent);
-  font-size: 13px;
-  line-height: 1.2;
+  box-shadow: 0 1px 6px color-mix(in oklab, var(--ink) 12%, transparent);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.15;
+  white-space: nowrap;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--line);
 }
 .avatar-add {
   position: absolute;
-  right: 8px;
-  bottom: 2px;
-  width: 32px;
-  height: 32px;
+  right: 4px;
+  bottom: 4px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: var(--background);
+  color: #ffffff;
   background: var(--ink);
-  border: 3px solid var(--background);
+  border: 2px solid var(--background);
+  cursor: pointer;
 }
 .avatar-add svg {
-  width: 19px;
+  width: 12px;
+  height: 12px;
 }
 .identity-stats {
   min-width: 0;
-  padding-top: 18px;
+  padding-top: 2px;
 }
 .display-name {
-  font-size: 17px;
-  font-weight: 700;
-  margin-bottom: 15px;
+  font-size: 14.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  line-height: 1.2;
 }
 .verified {
   display: inline-block;
-  vertical-align: -3px;
+  vertical-align: -2px;
   margin-left: 3px;
 }
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 13px;
+  gap: 8px;
+  text-align: center;
 }
 .stats div {
   display: flex;
   flex-direction: column;
-  line-height: 1.05;
+  align-items: center;
+  line-height: 1.1;
 }
 .stats b {
-  font-size: 21px;
+  font-size: 16px;
+  font-weight: 700;
 }
 .stats span {
-  font-size: 16px;
-  margin-top: 3px;
+  font-size: 13px;
+  color: var(--ink);
+  margin-top: 2px;
 }
 .bio {
-  margin-top: 8px;
-  font-size: 16px;
+  margin-top: 4px;
+  font-size: 13.5px;
   line-height: 1.35;
 }
 .bio p {
@@ -228,75 +250,96 @@ button {
 }
 .bio .category {
   color: var(--subtle);
+  font-size: 13px;
 }
 .bio a {
   color: var(--link);
   text-decoration: none;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   font-weight: 600;
+  font-size: 13px;
+  margin-top: 2px;
 }
 .bio a svg {
-  width: 21px;
-  height: 21px;
+  width: 14px;
+  height: 14px;
 }
 .add-banners {
-  margin-top: 12px;
+  margin-top: 6px;
   border: 1px solid var(--line);
-  background: var(--background);
-  color: var(--subtle);
-  border-radius: 17px;
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 9999px;
   padding: 4px 11px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
 }
 .add-banners svg {
-  width: 17px;
-  height: 17px;
+  width: 13px;
+  height: 13px;
 }
 .dashboard {
   width: 100%;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   background: var(--panel);
   text-align: left;
-  margin-top: 14px;
-  padding: 15px 16px;
+  margin-top: 6px;
+  padding: 7px 12px;
   display: flex;
   flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 .dashboard b {
-  font-size: 16px;
+  font-size: 13px;
+  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
+  color: var(--ink);
 }
 .dashboard span {
   color: var(--subtle);
-  font-size: 13px;
-  margin-top: 2px;
+  font-size: 11.5px;
+  margin-top: 1px;
 }
 .edit-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  margin-top: 9px;
+  margin-top: 6px;
 }
 .edit-actions button {
   border: 0;
   background: var(--panel);
   border-radius: 8px;
-  padding: 10px;
-  font-weight: 700;
-  font-size: 16px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.edit-actions button:active,
+.dashboard:active,
+.add-banners:active {
+  opacity: 0.8;
 }
 .highlights {
   display: flex;
-  gap: 16px;
-  padding: 16px 18px 12px;
+  gap: 12px;
+  padding: 6px 16px 2px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -308,22 +351,22 @@ button {
   display: none;
 }
 .highlight {
-  min-width: 68px;
-  max-width: 76px;
+  min-width: 58px;
+  max-width: 64px;
   padding: 0;
   border: 0;
   background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
   text-decoration: none;
   color: inherit;
 }
 .highlight > span {
-  width: 68px;
-  height: 68px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -333,8 +376,8 @@ button {
   transform: scale(0.95);
 }
 .highlight svg {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
 }
 .new-highlight {
   border: 1.5px solid var(--line);
@@ -346,8 +389,8 @@ button {
   color: var(--background);
 }
 .discord-highlight svg {
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   fill: currentColor;
 }
 .custom-highlight-cover {
@@ -363,8 +406,8 @@ button {
   object-fit: cover;
 }
 .highlight small {
-  font-size: 12px;
-  max-width: 72px;
+  font-size: 11px;
+  max-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -373,15 +416,16 @@ button {
   color: var(--ink);
 }
 .content-tabs {
-  height: 52px;
+  height: 44px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   border-bottom: 1px solid var(--line);
+  margin-top: 4px;
 }
 .content-tabs button,
 .content-tabs a {
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1.5px solid transparent;
   background: transparent;
   color: var(--subtle);
   display: flex;
@@ -398,8 +442,8 @@ button {
   color: var(--ink);
 }
 .content-tabs svg {
-  width: 26px;
-  height: 26px;
+  width: 23px;
+  height: 23px;
 }
 .reel-grid {
   display: grid;

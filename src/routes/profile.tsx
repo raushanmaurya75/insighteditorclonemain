@@ -13,6 +13,7 @@ import {
   IgReels,
   IgRepost,
   IgTagged,
+  IgThreads,
   IgVerified,
   IgHeart,
   IgComment,
@@ -153,8 +154,8 @@ function ProfilePage() {
       <div className="phone-shell pb-24">
         {/* Profile Top Navigation Bar */}
         <nav className="profile-nav" aria-label="Profile navigation">
-          <Link to="/" aria-label="Home feed" title="Home feed">
-            <IgCreate />
+          <Link to="/" aria-label="Home feed" title="Home feed" className="profile-nav-btn">
+            <IgPlus size={24} />
           </Link>
           <button
             className="handle"
@@ -162,18 +163,30 @@ function ProfilePage() {
             onClick={() => setIsMenuOpen(true)}
             title="Switch or clone account"
           >
-            {profile.username} <IgChevronDown />
+            <span>{profile.username}</span> <IgChevronDown size={14} />
             <i />
           </button>
-          <button
-            type="button"
-            className="text-inherit border-none bg-transparent p-0 cursor-pointer flex items-center"
-            onClick={() => setIsMenuOpen(true)}
-            aria-label="Menu"
-            title="Menu"
-          >
-            <IgMenu />
-          </button>
+          <div className="profile-nav-right">
+            <a
+              href={`https://threads.net/@${profile.username.replace(/^@/, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="profile-nav-btn"
+              aria-label="Threads"
+              title="Threads"
+            >
+              <IgThreads size={24} />
+            </a>
+            <button
+              type="button"
+              className="profile-nav-btn"
+              onClick={() => setIsMenuOpen(true)}
+              aria-label="Menu"
+              title="Menu"
+            >
+              <IgMenu size={24} />
+            </button>
+          </div>
         </nav>
 
         {/* Profile Summary Section */}
@@ -181,9 +194,9 @@ function ProfilePage() {
           {/* Avatar + Stats */}
           <div className="profile-top">
             <div className="avatar-wrap">
-              {profile.noteText && (
-                <div className="note whitespace-pre-line">{profile.noteText}</div>
-              )}
+              <div className="note whitespace-pre-line">
+                {profile.noteText || "Start your\nfirst note..."}
+              </div>
               <div className="avatar-ring">
                 <img
                   src={profile.avatarUrl}
@@ -198,7 +211,7 @@ function ProfilePage() {
                 />
               </div>
               <span className="avatar-add" onClick={handleOpenCloneModal} title="Clone profile">
-                <IgPlus />
+                <IgPlus size={13} />
               </span>
             </div>
 
@@ -206,7 +219,7 @@ function ProfilePage() {
               <div className="display-name">
                 {profile.fullName}{" "}
                 {profile.isVerified && (
-                  <IgVerified size={18} className="verified" />
+                  <IgVerified size={15} className="verified" />
                 )}
               </div>
               <div className="stats">
@@ -242,22 +255,20 @@ function ProfilePage() {
                 target="_blank"
                 rel="noreferrer"
               >
-                <IgLink /> {profile.externalUrl.replace(/^https?:\/\//, "")}
+                <IgLink size={15} /> {profile.externalUrl.replace(/^https?:\/\//, "")}
               </a>
             )}
           </div>
 
           {/* Add Banners Button */}
           <button className="add-banners" type="button">
-            <IgPlus /> Add banners
+            <IgPlus size={13} /> Add banners
           </button>
 
           {/* Professional Dashboard Button */}
           <Link to="/dashboard" className="dashboard">
-            <b>
-              <IgDashboard size={16} /> Professional dashboard
-            </b>
-            <span>{profile.monthlyViews || "1.6M views in the last 30 days."}</span>
+            <b>Professional dashboard</b>
+            <span>{profile.monthlyViews || "11 views in the last 30 days."}</span>
           </Link>
 
           {/* Edit / Share Actions */}
@@ -279,53 +290,55 @@ function ProfilePage() {
           </div>
         </section>
 
-        {/* Story Highlights */}
-        <section className="highlights" aria-label="Story highlights">
-          <button
-            className="highlight cursor-pointer"
-            type="button"
-            onClick={() => setIsAddHighlightOpen(true)}
-            title="Add new highlight"
-          >
-            <span className="new-highlight">
-              <IgPlus />
-            </span>
-            <small>New</small>
-          </button>
+        {/* Story Highlights (Rendered only when custom highlights exist) */}
+        {profile.highlights && profile.highlights.length > 0 && (
+          <section className="highlights" aria-label="Story highlights">
+            <button
+              className="highlight cursor-pointer"
+              type="button"
+              onClick={() => setIsAddHighlightOpen(true)}
+              title="Add new highlight"
+            >
+              <span className="new-highlight">
+                <IgPlus size={20} />
+              </span>
+              <small>New</small>
+            </button>
 
-          {(profile.highlights || []).map((hl) =>
-            hl.isSpecialDiscord ? (
-              <Link
-                key={hl.id}
-                to="/insights"
-                className="highlight"
-                title="Audience Insights"
-              >
-                <span className="discord-highlight">
-                  <IgDiscord />
-                </span>
-                <small>{hl.title}</small>
-              </Link>
-            ) : (
-              <button
-                key={hl.id}
-                type="button"
-                className="highlight cursor-pointer"
-                onClick={() => setSelectedHighlight(hl)}
-                title={`View ${hl.title}`}
-              >
-                <span className="custom-highlight-cover">
-                  <img
-                    src={hl.coverUrl || profile.avatarUrl}
-                    alt={hl.title}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                </span>
-                <small>{hl.title}</small>
-              </button>
-            )
-          )}
-        </section>
+            {profile.highlights.map((hl) =>
+              hl.isSpecialDiscord ? (
+                <Link
+                  key={hl.id}
+                  to="/insights"
+                  className="highlight"
+                  title="Audience Insights"
+                >
+                  <span className="discord-highlight">
+                    <IgDiscord size={24} />
+                  </span>
+                  <small>{hl.title}</small>
+                </Link>
+              ) : (
+                <button
+                  key={hl.id}
+                  type="button"
+                  className="highlight cursor-pointer"
+                  onClick={() => setSelectedHighlight(hl)}
+                  title={`View ${hl.title}`}
+                >
+                  <span className="custom-highlight-cover">
+                    <img
+                      src={hl.coverUrl || profile.avatarUrl}
+                      alt={hl.title}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  </span>
+                  <small>{hl.title}</small>
+                </button>
+              )
+            )}
+          </section>
+        )}
 
         {/* Content Navigation Tabs */}
         <div className="content-tabs" role="tablist">
@@ -335,7 +348,7 @@ function ProfilePage() {
             className={activeTab === "grid" ? "active" : ""}
             onClick={() => setActiveTab("grid")}
           >
-            <IgGrid />
+            <IgGrid size={23} />
           </button>
           <button
             aria-label="Videos / Reels"
@@ -343,7 +356,7 @@ function ProfilePage() {
             className={activeTab === "reels" ? "active" : ""}
             onClick={() => setActiveTab("reels")}
           >
-            <IgReels />
+            <IgReels size={23} />
           </button>
           <button
             aria-label="Reposts"
@@ -351,7 +364,7 @@ function ProfilePage() {
             className={activeTab === "reposts" ? "active" : ""}
             onClick={() => setActiveTab("reposts")}
           >
-            <IgRepost />
+            <IgRepost size={23} />
           </button>
           <button
             aria-label="Tagged"
@@ -359,7 +372,7 @@ function ProfilePage() {
             className={activeTab === "tagged" ? "active" : ""}
             onClick={() => setActiveTab("tagged")}
           >
-            <IgTagged />
+            <IgTagged size={23} />
           </button>
         </div>
 
