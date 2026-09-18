@@ -1,1 +1,0 @@
-import{W as e}from"./floating-bottom-nav-Cf5U22pN.js";var t=e(`chevron-right`,[[`path`,{d:`m9 18 6-6-6-6`,key:`mthhwq`}]]);export{t};

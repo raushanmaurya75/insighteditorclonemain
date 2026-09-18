@@ -669,6 +669,9 @@ button {
   box-shadow: 0 0 28px color-mix(in oklab, var(--ink) 10%, transparent);
 }
 .iv-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   height: 48px;
   padding: 0 14px;
   display: flex;
@@ -723,8 +726,8 @@ button {
 }
 .iv-thumb-wrap {
   position: relative;
-  width: 96px;
-  height: 168px;
+  width: 110px;
+  height: 195px;
   border-radius: 12px;
   overflow: hidden;
   margin: 6px auto 10px;
@@ -787,27 +790,45 @@ button {
   font-weight: 700;
 }
 .iv-tabs {
-  height: 40px;
+  position: sticky;
+  top: 48px;
+  z-index: 30;
+  background: #ffffff;
+  height: 42px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border-bottom: 1px solid #ededed;
   margin-bottom: 0;
 }
 .iv-tabs button {
+  position: relative;
   border: 0;
-  border-bottom: 2.5px solid transparent;
+  border-bottom: none;
   padding: 0;
   background: transparent;
   color: #737373;
   font-size: 14.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
 }
 .iv-tabs button.active {
   color: #000000;
-  border-bottom-color: #000000;
   font-weight: 700;
+}
+.iv-tabs button.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 54px;
+  height: 2px;
+  background: #000000;
+  border-radius: 1px;
 }
 .iv-stat-cards {
   display: grid;
