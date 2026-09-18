@@ -31,6 +31,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
   const [category, setCategory] = useState(profile.category || "Digital Creator");
   const [bio, setBio] = useState(profile.bio);
   const [externalUrl, setExternalUrl] = useState(profile.externalUrl);
+  const [threadsUsername, setThreadsUsername] = useState(profile.threadsUsername || profile.username);
   const [noteText, setNoteText] = useState(profile.noteText || "");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl);
   const [isVerified, setIsVerified] = useState(profile.isVerified);
@@ -179,6 +180,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
       category: category.trim(),
       bio: bio.trim(),
       externalUrl: externalUrl.trim(),
+      threadsUsername: threadsUsername.trim().replace(/^@+/, ""),
       noteText: noteText.trim(),
       avatarUrl: avatarUrl.trim() || profile.avatarUrl,
       isVerified,
@@ -467,12 +469,27 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
                 </div>
 
                 <div>
+                  <label className="block font-semibold text-subtle mb-1">Threads Username (Badge)</label>
+                  <div className="flex items-center border border-[#dbdbdb] rounded-lg bg-white focus-within:border-black">
+                    <span className="pl-3 text-subtle font-medium text-sm">@</span>
+                    <input
+                      type="text"
+                      value={threadsUsername}
+                      onChange={(e) => setThreadsUsername(e.target.value.replace(/[^a-zA-Z0-9._]/g, ""))}
+                      placeholder="threads_username"
+                      className="w-full px-2 py-2 text-sm bg-transparent border-none focus:outline-none"
+                    />
+                  </div>
+                  <span className="text-[10px] text-subtle">Appears as the Threads pill badge beside "+ Add banners" on your profile.</span>
+                </div>
+
+                <div>
                   <label className="block font-semibold text-subtle mb-1">Avatar Note Bubble</label>
                   <input
                     type="text"
                     value={noteText}
                     onChange={(e) => setNoteText(e.target.value)}
-                    placeholder="e.g. Listening to vibes..."
+                    placeholder="e.g. Start your first note..."
                     className="w-full px-3 py-2 border border-[#dbdbdb] rounded-lg text-sm bg-white focus:outline-none focus:border-black"
                   />
                   <span className="text-[10px] text-subtle">Appears above profile photo on your profile & stories.</span>

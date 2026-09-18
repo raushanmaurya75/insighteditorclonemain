@@ -41,6 +41,7 @@ export interface ProfileData {
   bio: string;
   category: string;
   externalUrl: string;
+  threadsUsername?: string;
   isVerified: boolean;
   postsCount: number;
   followersCount: number;
@@ -88,12 +89,13 @@ export const DEFAULT_PROFILE: ProfileData = {
   bio: "🔥 Daily Dose of Wisdom, Discipline & Mindset\n💡 Helping you become 1% better every single day\n👇 Save & Share with an ambitious friend",
   category: "Digital Creator",
   externalUrl: "https://instagram.com/m0tivati0nal_qu0ts",
+  threadsUsername: "m0tivati0nal_qu0ts",
   isVerified: false,
   postsCount: 1420,
   followersCount: 1950000,
   followingCount: 85,
   monthlyViews: "18.4M views in the last 30 days.",
-  noteText: "Daily\nMindset ⏳",
+  noteText: "Start\nyour first\nnote...",
   isCloned: true,
   posts: [
     {

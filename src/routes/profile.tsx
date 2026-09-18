@@ -260,10 +260,23 @@ function ProfilePage() {
             )}
           </div>
 
-          {/* Add Banners Button */}
-          <button className="add-banners" type="button">
-            <IgPlus size={13} /> Add banners
-          </button>
+          {/* Action Pills: Threads Badge + Add Banners Button */}
+          <div className="profile-pills-row">
+            <a
+              href={`https://threads.net/@${(profile.threadsUsername || profile.username).replace(/^@/, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="threads-badge-pill"
+              title="Open Threads Profile"
+            >
+              <IgThreads size={14} />
+              <span>{profile.threadsUsername || profile.username}</span>
+            </a>
+
+            <button className="add-banners" type="button">
+              <IgPlus size={13} /> Add banners
+            </button>
+          </div>
 
           {/* Professional Dashboard Button */}
           <Link to="/dashboard" className="dashboard">

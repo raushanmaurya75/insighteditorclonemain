@@ -147,9 +147,9 @@ button {
 }
 .avatar-wrap {
   width: 96px;
-  height: 106px;
+  height: 124px;
   position: relative;
-  padding-top: 14px;
+  padding-top: 36px;
 }
 .avatar-ring {
   width: 88px;
@@ -172,19 +172,20 @@ button {
   top: 0;
   z-index: 2;
   background: var(--background);
-  border-radius: 12px;
-  padding: 3px 8px;
+  border-radius: 16px;
+  padding: 5px 12px;
   text-align: center;
   color: var(--subtle);
-  box-shadow: 0 1px 6px color-mix(in oklab, var(--ink) 12%, transparent);
-  font-size: 11px;
+  box-shadow: 0 2px 10px color-mix(in oklab, var(--ink) 14%, transparent);
+  font-size: 11.5px;
   font-weight: 500;
-  line-height: 1.15;
-  white-space: nowrap;
-  max-width: 110px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.22;
+  min-width: 76px;
+  max-width: 98px;
   border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .avatar-add {
   position: absolute;
@@ -225,9 +226,9 @@ button {
   margin-left: 3px;
 }
 .stats {
-  display: flex;
-  justify-content: flex-start;
-  gap: 22px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
   width: 100%;
   text-align: left;
 }
@@ -275,13 +276,43 @@ button {
   width: 14px;
   height: 14px;
 }
+.profile-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.threads-badge-pill {
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  font-size: 12.5px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.threads-badge-pill svg {
+  width: 14px;
+  height: 14px;
+}
+.threads-badge-pill:active,
+.add-banners:active {
+  opacity: 0.8;
+}
 .add-banners {
-  margin-top: 6px;
+  height: 28px;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
   border-radius: 9999px;
-  padding: 4px 11px;
+  padding: 0 11px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
