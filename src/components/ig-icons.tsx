@@ -631,13 +631,13 @@ export const IgBackArrow = ({ size = 24, ...p }: IconProps) => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2.4"
+    strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
     {...p}
   >
-    <line x1="19" y1="12" x2="5" y2="12" />
-    <polyline points="12 19 5 12 12 5" />
+    <line x1="23" y1="12" x2="1.8" y2="12" />
+    <polyline points="8.8 5 1.8 12 8.8 19" />
   </svg>
 );
 
@@ -646,10 +646,32 @@ export const IgSkipRate = ({ size = 20, ...p }: IconProps) => (
     width={size}
     height={size}
     viewBox="0 0 24 24"
-    fill="currentColor"
+    fill="none"
+    stroke="currentColor"
     {...p}
   >
-    <path d="M5.5 4a1 1 0 0 0-1 1v14a1 1 0 0 0 1.555.832l8-7a1 1 0 0 0 0-1.664l-8-7A1 1 0 0 0 5.5 4ZM18 4a1 1 0 0 0-1 1v14a1 1 0 1 0 2 0V5a1 1 0 0 0-1-1Z" />
+    {/* Solid arc on right (12 o'clock to 4 o'clock) */}
+    <path
+      d="M 12 2.2 A 9.8 9.8 0 0 1 20.487 16.9"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    {/* Dotted arc on left (4 o'clock back to 12 o'clock) */}
+    <path
+      d="M 20.487 16.9 A 9.8 9.8 0 1 1 12 2.2"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeDasharray="0.1 4.8"
+      opacity="0.5"
+    />
+    {/* L-shaped clock hands */}
+    <path
+      d="M 12 7.5 V 12 H 16.5"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 

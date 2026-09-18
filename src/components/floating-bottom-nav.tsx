@@ -13,10 +13,10 @@ export function FloatingBottomNav({ className }: FloatingBottomNavProps) {
   const { profile } = useProfile();
 
   const isHome = pathname === "/" || pathname === "/home";
-  const isReels = pathname === "/insight-view";
+  const isReels = pathname === "/reel" || pathname === "/reels";
   const isDashboard = pathname === "/dashboard";
   const isInsights = pathname === "/insights";
-  const isProfile = pathname === "/profile";
+  const isProfile = pathname === "/profile" || pathname === "/insight-view";
 
   const avatarSrc = profile.avatarUrl || defaultProfilePhoto;
 
