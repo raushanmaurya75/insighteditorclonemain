@@ -890,7 +890,7 @@ button {
   font-weight: 600;
 }
 .iv-section {
-  padding: 24px 18px 26px;
+  padding: 18px 16px 20px;
   border-bottom: 8px solid #f5f5f7;
 }
 .iv-section.no-border {
@@ -900,14 +900,15 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 16px;
-  font-size: 17px;
-  font-weight: 750;
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 600;
   color: #000000;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.15px;
 }
 .iv-info-icon {
-  color: #8e8e93;
+  color: #000000;
+  opacity: 0.75;
   cursor: pointer;
 }
 .iv-section-sub {
@@ -1146,7 +1147,7 @@ button {
 .iv-list-table {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 .iv-table-row {
   display: flex;
@@ -1154,10 +1155,12 @@ button {
   align-items: center;
   font-size: 15px;
   color: #000000;
+  font-weight: 400;
 }
 .iv-table-row strong {
   font-size: 15px;
-  font-weight: 750;
+  font-weight: 400;
+  color: #000000;
 }
 @media (max-width: 400px) {
   .iv-section {

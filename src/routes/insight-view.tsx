@@ -14,6 +14,7 @@ import {
   Eye,
   X,
   RotateCcw,
+  MoreVertical,
 } from "lucide-react";
 import {
   IgHeart,
@@ -95,27 +96,28 @@ function InsightHeader({
   return (
     <>
       <header className="iv-header">
-        <Link
-          to="/profile"
-          aria-label="Back to profile"
-          title="Back to profile"
-          className="iv-back-btn"
-        >
-          <ChevronLeft size={28} strokeWidth={2.4} />
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/profile"
+            aria-label="Back to profile"
+            title="Back to profile"
+            className="iv-back-btn"
+          >
+            <ChevronLeft size={28} strokeWidth={2.4} />
+          </Link>
+          <h1 className="iv-header-title">Reel insights</h1>
+        </div>
 
-        <h1 className="iv-header-title">Reel insights</h1>
-
-        {/* Top Right: Two Icons (Info icon + Three dots menu icon) */}
+        {/* Top Right: TrendingUp graph icon + Three vertical dots */}
         <div className="iv-header-actions">
           <button
             type="button"
             onClick={() => setShowInfoModal(true)}
             className="iv-icon-btn"
-            aria-label="Insights information"
+            aria-label="Trending stats"
             title="About Reel Insights"
           >
-            <Info size={22} strokeWidth={2} />
+            <TrendingUp size={22} strokeWidth={2.2} />
           </button>
 
           <button
@@ -125,7 +127,7 @@ function InsightHeader({
             aria-label="More options"
             title="Options & Edit Mode"
           >
-            <IgMore size={22} />
+            <MoreVertical size={22} strokeWidth={2.2} />
           </button>
         </div>
       </header>
@@ -959,29 +961,32 @@ function EngagementTab({
 
   return (
     <div className="iv-tab-content">
-      {/* Top follows row */}
-      <div
-        onClick={
-          isEditMode
-            ? () =>
-                onEditText("Edit Follows (Engagement)", insights.followsEngagement, (v) => {
-                  insights.followsEngagement = parseInt(v) || 0;
-                })
-            : undefined
-        }
-        className={`iv-follows-row transition-colors ${
-          isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
-        }`}
-        title={isEditMode ? "Click to edit Follows" : undefined}
-      >
-        <span className="iv-follows-label flex items-center gap-1">
-          <span>Follows</span>
-          {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
-        </span>
-        <strong className="iv-follows-val">
-          {insights.followsEngagement.toLocaleString()}
-        </strong>
-      </div>
+      {/* Actions after viewing */}
+      <section className="iv-section">
+        <InfoTitle>Actions after viewing</InfoTitle>
+        <div className="iv-list-table">
+          <div
+            onClick={
+              isEditMode
+                ? () =>
+                    onEditText("Edit Follows (Engagement)", insights.followsEngagement, (v) => {
+                      insights.followsEngagement = parseInt(v) || 0;
+                    })
+                : undefined
+            }
+            className={`iv-table-row transition-colors ${
+              isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+            }`}
+            title={isEditMode ? "Click to edit Follows" : undefined}
+          >
+            <span className="flex items-center gap-1">
+              <span>Follows</span>
+              {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+            </span>
+            <strong>{insights.followsEngagement.toLocaleString()}</strong>
+          </div>
+        </div>
+      </section>
 
       {/* Interactions list */}
       <section className="iv-section">
