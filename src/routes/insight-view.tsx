@@ -1395,7 +1395,7 @@ function InsightViewPage() {
 
   return (
     <main className="iv-page min-h-screen bg-page text-ink">
-      <div className="iv-phone pb-28">
+      <div className="iv-phone pb-14">
         <InsightHeader
           isEditMode={isEditMode}
           onToggleEditMode={() => setIsEditMode(!isEditMode)}

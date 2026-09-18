@@ -575,11 +575,12 @@ void main() async {
     }
   }
 
-  // Set Android system bars (status bar and navigation bar) styling
+  // Set Android system bars (status bar and navigation bar) strictly to Light Theme
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
+      statusBarColor: Colors.white,
       statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
       systemNavigationBarColor: Colors.white,
       systemNavigationBarIconBrightness: Brightness.dark,
       systemNavigationBarDividerColor: Color(0xFFE5E5E5),
@@ -597,9 +598,12 @@ class InsightEditorApp extends StatelessWidget {
     return MaterialApp(
       title: 'Insight Editor',
       debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.light,
       theme: ThemeData(
+        brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFFE1306C),
+          brightness: Brightness.light,
           primary: const Color(0xFF000000),
           surface: Colors.white,
         ),
@@ -632,6 +636,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
     super.initState();
 
     _settings = InAppWebViewSettings(
+      forceDark: ForceDark.OFF,
+      forceDarkStrategy: ForceDarkStrategy.PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING,
       useShouldOverrideUrlLoading: true,
       useShouldInterceptRequest: true,
       mediaPlaybackRequiresUserGesture: false,
@@ -687,39 +693,48 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Color(0xFFE5E5E5),
+      ),
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
 
-        if (_webViewController != null && await _webViewController!.canGoBack()) {
-          _webViewController!.goBack();
-          return;
-        }
+          if (_webViewController != null && await _webViewController!.canGoBack()) {
+            _webViewController!.goBack();
+            return;
+          }
 
-        final now = DateTime.now();
-        if (_lastBackPressTime == null ||
-            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
-          _lastBackPressTime = now;
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Press back again to exit'),
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          return;
-        }
+          final now = DateTime.now();
+          if (_lastBackPressTime == null ||
+              now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+            _lastBackPressTime = now;
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Press back again to exit'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
 
-        // Exit the app
-        SystemNavigator.pop();
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          top: true,
-          bottom: false,
+          // Exit the app
+          SystemNavigator.pop();
+        },
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            top: true,
+            bottom: false,
           child: Stack(
             children: [
               // WebView loading from embedded in-app localhost with native JS Handlers & Interceptor
