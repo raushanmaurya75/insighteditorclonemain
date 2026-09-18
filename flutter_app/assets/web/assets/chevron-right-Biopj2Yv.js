@@ -1,1 +1,0 @@
-import{M as e}from"./reel-machine-NR2rjI9N.js";var t=e(`chevron-right`,[[`path`,{d:`m9 18 6-6-6-6`,key:`mthhwq`}]]);export{t};

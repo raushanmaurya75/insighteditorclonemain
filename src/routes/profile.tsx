@@ -365,78 +365,102 @@ function ProfilePage() {
 
         {/* Reels View Tab */}
         {activeTab === "reels" && (
-          <section className="reel-grid" aria-label="Video posts">
-            {profile.posts.map((post, idx) => (
-              <div
-                className="reel cursor-pointer"
-                key={post.id || idx}
-                onClick={() => handlePostClick(idx)}
-                title="View Reel & Insights"
-              >
-                <img
-                  src={post.thumbnail_src || post.display_url}
-                  alt={post.caption || "Reel"}
-                  width={768}
-                  height={1024}
-                  loading="lazy"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
-                  }}
-                />
-                <span className="post-grid-badge">
-                  <IgClip size={17} />
-                </span>
-                <span className="view-count">
-                  <IgPlay size={13} />
-                  {formatCompactNumber(post.views)}
-                </span>
+          profile.posts.length === 0 ? (
+            <div className="py-20 text-center text-subtle flex flex-col items-center justify-center">
+              <div className="w-16 h-16 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center mb-3 text-gray-400">
+                <IgReels />
               </div>
-            ))}
-          </section>
+              <h4 className="text-base font-bold text-ink">No Reels Yet</h4>
+              <p className="text-xs text-subtle mt-1 max-w-[240px]">
+                When @{profile.username} shares reels, they will appear here.
+              </p>
+            </div>
+          ) : (
+            <section className="reel-grid" aria-label="Video posts">
+              {profile.posts.map((post, idx) => (
+                <div
+                  className="reel cursor-pointer"
+                  key={post.id || idx}
+                  onClick={() => handlePostClick(idx)}
+                  title="View Reel & Insights"
+                >
+                  <img
+                    src={post.thumbnail_src || post.display_url}
+                    alt={post.caption || "Reel"}
+                    width={768}
+                    height={1024}
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src =
+                        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
+                    }}
+                  />
+                  <span className="post-grid-badge">
+                    <IgClip size={17} />
+                  </span>
+                  <span className="view-count">
+                    <IgPlay size={13} />
+                    {formatCompactNumber(post.views)}
+                  </span>
+                </div>
+              ))}
+            </section>
+          )
         )}
 
         {/* Standard Posts Grid Tab */}
         {activeTab === "grid" && (
-          <section className="post-grid-wrap" aria-label="Photos and posts grid">
-            {profile.posts.map((post, idx) => (
-              <div
-                key={post.id || idx}
-                className="post-grid-item cursor-pointer"
-                onClick={() => handlePostClick(idx)}
-                title="View Post"
-              >
-                <img
-                  src={post.thumbnail_src || post.display_url}
-                  alt={post.caption || "Post thumbnail"}
-                  loading="lazy"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
-                  }}
-                />
-                {post.is_video ? (
-                  <span className="post-grid-badge">
-                    <IgClip size={17} />
-                  </span>
-                ) : (
-                  <span className="post-grid-badge">
-                    <IgCarouselIcon size={17} />
-                  </span>
-                )}
-                <div className="post-grid-overlay">
-                  <span className="flex items-center gap-1">
-                    <IgHeart size={16} fill="#ffffff" />
-                    {formatCompactNumber(post.likes)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <IgComment size={16} fill="#ffffff" />
-                    {formatCompactNumber(post.comments)}
-                  </span>
-                </div>
+          profile.posts.length === 0 ? (
+            <div className="py-20 text-center text-subtle flex flex-col items-center justify-center">
+              <div className="w-16 h-16 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center mb-3 text-gray-400">
+                <IgGrid />
               </div>
-            ))}
-          </section>
+              <h4 className="text-base font-bold text-ink">No Posts Yet</h4>
+              <p className="text-xs text-subtle mt-1 max-w-[240px]">
+                When @{profile.username} shares photos or reels, they will appear here.
+              </p>
+            </div>
+          ) : (
+            <section className="post-grid-wrap" aria-label="Photos and posts grid">
+              {profile.posts.map((post, idx) => (
+                <div
+                  key={post.id || idx}
+                  className="post-grid-item cursor-pointer"
+                  onClick={() => handlePostClick(idx)}
+                  title="View Post"
+                >
+                  <img
+                    src={post.thumbnail_src || post.display_url}
+                    alt={post.caption || "Post thumbnail"}
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src =
+                        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
+                    }}
+                  />
+                  {post.is_video ? (
+                    <span className="post-grid-badge">
+                      <IgClip size={17} />
+                    </span>
+                  ) : (
+                    <span className="post-grid-badge">
+                      <IgCarouselIcon size={17} />
+                    </span>
+                  )}
+                  <div className="post-grid-overlay">
+                    <span className="flex items-center gap-1">
+                      <IgHeart size={16} fill="#ffffff" />
+                      {formatCompactNumber(post.likes)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <IgComment size={16} fill="#ffffff" />
+                      {formatCompactNumber(post.comments)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )
         )}
 
         {/* Reposts or Tagged Empty State */}

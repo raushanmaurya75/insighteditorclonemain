@@ -204,13 +204,38 @@ export async function scrapeInstagramProfile(
     };
   }
 
+  // ── Strategy 0: Flutter In-App Native Bridge (Direct APK execution) ──
+  if (typeof window !== "undefined" && (window as any).flutter_inappwebview?.callHandler) {
+    try {
+      const bridgeRes = await (window as any).flutter_inappwebview.callHandler(
+        "scrapeInstagram",
+        username
+      );
+      if (bridgeRes && bridgeRes.status === "ok" && bridgeRes.data?.user) {
+        return bridgeRes as { status: "ok"; data: { user: ScrapedInstagramUser } };
+      }
+    } catch (e) {
+      console.warn("[IG Scraper] Flutter JS Bridge Note:", e);
+    }
+  }
+
   // ── Strategy 1: Desktop HTML & Polaris Relay Preloader Parser ──
   try {
     const webUrl = `https://www.instagram.com/${username}/`;
-    const resp = await fetch(webUrl, {
-      headers: IG_DESKTOP_HEADERS,
-      signal: AbortSignal.timeout(12000),
-    });
+    let resp: Response | null = null;
+    try {
+      resp = await fetch(webUrl, {
+        headers: IG_DESKTOP_HEADERS,
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch {
+      // CORS fallback via public proxy
+      try {
+        resp = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(webUrl)}`, {
+          signal: AbortSignal.timeout(10000),
+        });
+      } catch {}
+    }
 
     if (resp.ok) {
       const html = await resp.text();
@@ -256,29 +281,57 @@ export async function scrapeInstagramProfile(
             if (obj.full_name && !fullName) {
               fullName = String(obj.full_name).trim();
             }
-            if ((obj.profile_pic_url_hd || obj.profile_pic_url) && !profilePic) {
-              profilePic = String(obj.profile_pic_url_hd || obj.profile_pic_url);
+            if (obj.profile_pic_url_hd || obj.profile_pic_url) {
+              const pic = String(obj.profile_pic_url_hd || obj.profile_pic_url);
+              if (pic && (!profilePic || pic.includes("1080x1080") || pic.includes("s320x320"))) {
+                profilePic = pic;
+              }
             }
             if (obj.biography !== undefined && obj.biography !== null && !biography) {
               biography = String(obj.biography);
             }
-            if (obj.follower_count != null && Number(obj.follower_count) > 0 && followerCount === 0) {
+            if (obj.follower_count != null && !isNaN(Number(obj.follower_count))) {
               followerCount = Number(obj.follower_count);
             }
-            if (obj.following_count != null && Number(obj.following_count) > 0 && followingCount === 0) {
+            if (obj.following_count != null && !isNaN(Number(obj.following_count))) {
               followingCount = Number(obj.following_count);
             }
             if (obj.is_verified != null && !isVerified) {
               isVerified = Boolean(obj.is_verified);
             }
-            if (obj.edge_followed_by?.count != null && followerCount === 0) {
+            if (obj.edge_followed_by?.count != null && !isNaN(Number(obj.edge_followed_by.count))) {
               followerCount = Number(obj.edge_followed_by.count);
             }
-            if (obj.edge_follow?.count != null && followingCount === 0) {
+            if (obj.edge_follow?.count != null && !isNaN(Number(obj.edge_follow.count))) {
               followingCount = Number(obj.edge_follow.count);
             }
-            if (obj.edge_owner_to_timeline_media?.count != null && postsCount === 0) {
+            if (obj.edge_owner_to_timeline_media?.count != null && !isNaN(Number(obj.edge_owner_to_timeline_media.count))) {
               postsCount = Number(obj.edge_owner_to_timeline_media.count);
+            }
+
+            // Direct Highlight Reel (XIGHighlightReel)
+            if (
+              obj.title &&
+              (obj.cover_media_cropped_thumbnail_url ||
+                obj.cover_media ||
+                obj.__typename === "XIGHighlightReel" ||
+                obj.cropped_image_version)
+            ) {
+              const hlTitle = String(obj.title).trim();
+              const coverUrl = String(
+                obj.cover_media_cropped_thumbnail_url ||
+                  obj.cover_media?.thumbnail_src ||
+                  obj.cropped_image_version?.url ||
+                  ""
+              );
+              const hId = String(obj.id || `hl_${rawHighlights.length + 1}`);
+              if (hlTitle && !rawHighlights.some((h) => h.id === hId || h.title === hlTitle)) {
+                rawHighlights.push({
+                  id: hId,
+                  title: hlTitle,
+                  coverUrl: buildProxyUrl(coverUrl, origin),
+                });
+              }
             }
 
             // Story Highlights Connection
@@ -289,8 +342,9 @@ export async function scrapeInstagramProfile(
                   const hId = String(hNode.id || `hl_${rawHighlights.length + 1}`);
                   const coverUrl = String(
                     hNode.cover_media_cropped_thumbnail_url ||
-                    hNode.cover_media?.thumbnail_src ||
-                    ""
+                      hNode.cover_media?.thumbnail_src ||
+                      hNode.cropped_image_version?.url ||
+                      ""
                   );
                   if (coverUrl) {
                     highlightCoverUrls.add(coverUrl);

@@ -10,7 +10,7 @@ import anubhavDubeyPhoto from "@/assets/feed-anubhav-dubey.jpg";
 import reelVideo1 from "@/assets/videos/reel1.mp4";
 import reelVideo2 from "@/assets/videos/reel2.mp4";
 import reelVideo3 from "@/assets/videos/reel3.mp4";
-import type { ScrapedInstagramUser, ScrapedPostNode } from "./instagram-scraper";
+import { scrapeInstagramProfile, type ScrapedInstagramUser, type ScrapedPostNode } from "./instagram-scraper";
 
 
 export interface ProfilePost {
@@ -419,12 +419,10 @@ export async function addCustomStoryAccount(
   let user: ScrapedInstagramUser | null = null;
 
   try {
-    const res = await fetch(`/api/scrape-ig?username=${encodeURIComponent(username)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.status === "ok" && data.data?.user) {
-        user = data.data.user as ScrapedInstagramUser;
-      }
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:8080";
+    const res = await scrapeInstagramProfile(username, origin);
+    if (res.status === "ok" && res.data?.user) {
+      user = res.data.user;
     }
   } catch {
     // offline/APK fallback
@@ -557,9 +555,9 @@ export function mapScrapedUserToProfile(user: ScrapedInstagramUser): ProfileData
     }
   );
 
-  const followers = user.edge_followed_by?.count || 0;
-  const following = user.edge_follow?.count || 0;
-  const postsCount = user.edge_owner_to_timeline_media?.count || posts.length;
+  const followers = user.edge_followed_by?.count ?? 0;
+  const following = user.edge_follow?.count ?? 0;
+  const postsCount = user.edge_owner_to_timeline_media?.count ?? posts.length;
 
   const monthlyViewsEstimate =
     followers > 1_000_000
@@ -568,13 +566,13 @@ export function mapScrapedUserToProfile(user: ScrapedInstagramUser): ProfileData
       ? `${(followers * 2.5 / 1_000).toFixed(0)}K`
       : "1.6M";
 
-  const mappedHighlights: ProfileHighlight[] = (user.highlights && user.highlights.length > 0)
+  const mappedHighlights: ProfileHighlight[] = Array.isArray(user.highlights)
     ? user.highlights.map((h, i) => ({
         id: h.id || `hl_${i + 1}`,
         title: h.title,
         coverUrl: h.coverUrl,
       }))
-    : (DEFAULT_PROFILE.highlights || []);
+    : [];
 
   return {
     username: user.username,
@@ -595,7 +593,7 @@ export function mapScrapedUserToProfile(user: ScrapedInstagramUser): ProfileData
     monthlyViews: `${monthlyViewsEstimate} views in the last 30 days.`,
     noteText: "Listening\nto vibes...",
     isCloned: true,
-    posts: posts.length > 0 ? posts : DEFAULT_PROFILE.posts,
+    posts: posts,
     highlights: mappedHighlights,
     selectedPostIndex: 0,
   };
@@ -1016,7 +1014,7 @@ export function getFamousCelebrityPosts(): HomeFeedPost[] {
         count: "1/1",
         tag1: `#${scraped.username}`,
         tag2: "#instagram",
-        time: "Suggested for you",
+        time: "10 hours ago",
         likes: formatCompactNumber(post.edge_media_preview_like?.count || 1_200_000),
         comments: formatCompactNumber(post.edge_media_to_comment?.count || 24_000),
         caption: post.edge_media_to_caption?.edges?.[0]?.node?.text || post.caption?.text || post.caption || "",
@@ -1045,7 +1043,7 @@ export function getSuggestedMotivationalPost(): HomeFeedPost {
     count: "1/1",
     tag1: "#mindset",
     tag2: "#discipline",
-    time: "Suggested for you",
+    time: "12 hours ago",
     likes: formatCompactNumber(post?.edge_media_preview_like?.count || 54_200),
     comments: formatCompactNumber(post?.edge_media_to_comment?.count || 480),
     caption:
@@ -1066,40 +1064,38 @@ export function getAllSuggestedPosts(): HomeFeedPost[] {
 export async function fetchLiveUserPosts(username: string): Promise<HomeFeedPost[]> {
   const cleanUsername = username.toLowerCase().trim().replace(/^@+/, "");
   try {
-    const res = await fetch(`/api/scrape-ig?username=${encodeURIComponent(cleanUsername)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.status === "ok" && data.data?.user) {
-        const u = data.data.user as ScrapedInstagramUser;
-        const posts = (u.edge_owner_to_timeline_media?.edges || []).map((e, idx) => {
-          const node = e.node;
-          const rawCaption =
-            node.edge_media_to_caption?.edges?.[0]?.node?.text ||
-            node.caption?.text ||
-            node.caption ||
-            "";
-          return {
-            id: `live_${u.username}_${node.id || idx}`,
-            user: u.username,
-            avatar: u.profile_pic_url_hd || u.profile_pic_url || storyMan,
-            sub: `♫ Original Audio · ${u.username}`,
-            img: node.display_url || node.thumbnail_src || storyMan,
-            count: "1/1",
-            tag1: `#${u.username}`,
-            tag2: "#instagram",
-            time: "Suggested for you",
-            likes: formatCompactNumber(node.edge_media_preview_like?.count || 12000),
-            comments: formatCompactNumber(node.edge_media_to_comment?.count || 140),
-            caption: rawCaption,
-            isVerified: u.is_verified,
-            isSuggested: true,
-            is_video: Boolean(node.is_video),
-            video_url: node.video_url || "",
-            shortcode: node.shortcode,
-          };
-        });
-        if (posts.length > 0) return posts;
-      }
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:8080";
+    const res = await scrapeInstagramProfile(cleanUsername, origin);
+    if (res.status === "ok" && res.data?.user) {
+      const u = res.data.user;
+      const posts = (u.edge_owner_to_timeline_media?.edges || []).map((e, idx) => {
+        const node = e.node;
+        const rawCaption =
+          node.edge_media_to_caption?.edges?.[0]?.node?.text ||
+          node.caption?.text ||
+          node.caption ||
+          "";
+        return {
+          id: `live_${u.username}_${node.id || idx}`,
+          user: u.username,
+          avatar: u.profile_pic_url_hd || u.profile_pic_url || storyMan,
+          sub: `♫ Original Audio · ${u.username}`,
+          img: node.display_url || node.thumbnail_src || storyMan,
+          count: "1/1",
+          tag1: `#${u.username}`,
+          tag2: "#instagram",
+          time: "10 hours ago",
+          likes: formatCompactNumber(node.edge_media_preview_like?.count || 12000),
+          comments: formatCompactNumber(node.edge_media_to_comment?.count || 140),
+          caption: rawCaption,
+          isVerified: u.is_verified,
+          isSuggested: true,
+          is_video: Boolean(node.is_video),
+          video_url: node.video_url || "",
+          shortcode: node.shortcode,
+        };
+      });
+      if (posts.length > 0) return posts;
     }
   } catch {}
 
@@ -1116,7 +1112,7 @@ export async function fetchLiveUserPosts(username: string): Promise<HomeFeedPost
       count: "1/1",
       tag1: `#${fallback.username}`,
       tag2: "#instagram",
-      time: "Suggested for you",
+      time: "14 hours ago",
       likes: formatCompactNumber(p.edge_media_preview_like?.count || 1200000),
       comments: formatCompactNumber(p.edge_media_to_comment?.count || 24000),
       caption: p.edge_media_to_caption?.edges?.[0]?.node?.text || p.caption?.text || p.caption || "",
@@ -1152,13 +1148,12 @@ export interface LiveUserDataResult {
 export async function fetchLiveUserData(username: string): Promise<LiveUserDataResult> {
   const cleanUsername = username.toLowerCase().trim().replace(/^@+/, "");
   try {
-    const res = await fetch(`/api/scrape-ig?username=${encodeURIComponent(cleanUsername)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.status === "ok" && data.data?.user) {
-        const u = data.data.user as ScrapedInstagramUser;
-        const avatar = u.profile_pic_url_hd || u.profile_pic_url || storyMan;
-        const posts = (u.edge_owner_to_timeline_media?.edges || []).map((e, idx) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:8080";
+    const res = await scrapeInstagramProfile(cleanUsername, origin);
+    if (res.status === "ok" && res.data?.user) {
+      const u = res.data.user;
+      const avatar = u.profile_pic_url_hd || u.profile_pic_url || storyMan;
+      const posts = (u.edge_owner_to_timeline_media?.edges || []).map((e, idx) => {
           const node = e.node;
           const rawCaption =
             node.edge_media_to_caption?.edges?.[0]?.node?.text ||
@@ -1174,7 +1169,7 @@ export async function fetchLiveUserData(username: string): Promise<LiveUserDataR
             count: "1/1",
             tag1: `#${u.username}`,
             tag2: "#instagram",
-            time: "Suggested for you",
+            time: "10 hours ago",
             likes: formatCompactNumber(node.edge_media_preview_like?.count || 12000),
             comments: formatCompactNumber(node.edge_media_to_comment?.count || 140),
             caption: rawCaption,
@@ -1193,8 +1188,7 @@ export async function fetchLiveUserData(username: string): Promise<LiveUserDataR
           posts,
         };
       }
-    }
-  } catch {}
+    } catch {}
 
   const fallback = generateRealisticScrapedUser(cleanUsername);
   const avatar = fallback.profile_pic_url_hd || fallback.profile_pic_url || storyMan;
@@ -1210,7 +1204,7 @@ export async function fetchLiveUserData(username: string): Promise<LiveUserDataR
           count: "1/1",
           tag1: `#${fallback.username}`,
           tag2: "#instagram",
-          time: "Suggested for you",
+          time: "14 hours ago",
           likes: formatCompactNumber(p.edge_media_preview_like?.count || 1200000),
           comments: formatCompactNumber(p.edge_media_to_comment?.count || 24000),
           caption: p.edge_media_to_caption?.edges?.[0]?.node?.text || p.caption?.text || p.caption || "",
@@ -1271,15 +1265,13 @@ export async function cloneInstagramProfile(
   }
 
   try {
-    const res = await fetch(`/api/scrape-ig?username=${encodeURIComponent(username)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.status === "ok" && data.data?.user) {
-        const mapped = mapScrapedUserToProfile(data.data.user);
-        memoryProfile = mapped;
-        notifyProfile();
-        return { success: true, user: data.data.user };
-      }
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:8080";
+    const res = await scrapeInstagramProfile(username, origin);
+    if (res.status === "ok" && res.data?.user) {
+      const mapped = mapScrapedUserToProfile(res.data.user);
+      memoryProfile = mapped;
+      notifyProfile();
+      return { success: true, user: res.data.user };
     }
   } catch {
     // Backend API unavailable (e.g. offline APK or standalone WebView) - fall through to fallback

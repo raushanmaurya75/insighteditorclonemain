@@ -509,25 +509,24 @@ button {
   height: 24px;
 }
 .bottom-nav .mini-profile {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   justify-self: center;
   border-radius: 50%;
-  border: 1.5px solid transparent;
   overflow: hidden;
-  padding: 1px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
   opacity: 1;
+  box-sizing: border-box;
   background: transparent !important;
 }
 .bottom-nav .mini-profile.current {
-  border-color: var(--ink);
+  box-shadow: 0 0 0 1.5px var(--ink);
   transform: none;
   opacity: 1;
-  padding: 1px !important;
 }
 .mini-profile img {
   width: 100%;

@@ -27,6 +27,7 @@ import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import {
   useProfile,
   useHomeStories,
+  cloneInstagramProfile,
   addCustomStoryAccount,
   removeCustomStoryAccount,
   formatCompactNumber,
@@ -74,14 +75,27 @@ interface PostItemProps {
   post: HomeFeedPost;
 }
 
+function parseNumericCount(val: string | number | undefined, fallback: number = 0): number {
+  if (val == null) return fallback;
+  if (typeof val === "number") return isNaN(val) ? fallback : val;
+  const clean = val.toString().trim().toUpperCase().replace(/,/g, "");
+  if (clean.endsWith("M")) return (parseFloat(clean.replace("M", "")) || 0) * 1_000_000;
+  if (clean.endsWith("K")) return (parseFloat(clean.replace("K", "")) || 0) * 1_000;
+  const num = parseFloat(clean);
+  return isNaN(num) ? fallback : num;
+}
+
 function DynamicPostCard({ post }: PostItemProps) {
+  const { profile } = useProfile();
   const [liked, setLiked] = useState(false);
   const [likeOffset, setLikeOffset] = useState(0);
   const [bookmarked, setBookmarked] = useState(false);
   const [reposted, setReposted] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [showHeartPop, setShowHeartPop] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
 
   const handleDoubleTap = () => {
     if (!liked) {
@@ -104,27 +118,34 @@ function DynamicPostCard({ post }: PostItemProps) {
 
   const isVideo = Boolean(post.is_video || (post.video_url && post.video_url.length > 0));
 
+  const baseLikes = parseNumericCount(post.likes, 12800);
+  const baseComments = parseNumericCount(post.comments, Math.max(12, Math.round(baseLikes * 0.008)));
+  const baseReposts = parseNumericCount((post as any).reposts, Math.max(24, Math.round(baseLikes * 0.038)));
+  const baseShares = parseNumericCount((post as any).shares, Math.max(68, Math.round(baseLikes * 0.145)));
+
+  const displayedLikes = formatCompactNumber(baseLikes + likeOffset);
+  const displayedComments = formatCompactNumber(baseComments);
+  const displayedReposts = formatCompactNumber(baseReposts + (reposted ? 1 : 0));
+  const displayedShares = formatCompactNumber(baseShares);
+
+  const fullCaption = (post.caption || "").trim();
+  const hasNewlines = fullCaption.includes("\n");
+  const isCaptionLong = fullCaption.length > 55 || hasNewlines;
+  const shortCaption = isCaptionLong
+    ? (hasNewlines ? fullCaption.split("\n")[0] : fullCaption.slice(0, 55)).trim()
+    : fullCaption;
+
+  const displayTime = post.time && post.time !== "Suggested for you" ? post.time : "10 hours ago";
+
   return (
-    <article className="feed-post-card border-b border-[var(--line)] pb-4 mb-2">
-      {/* Post Header */}
-      {post.isSuggested && (
-        <div className="flex items-center justify-between px-3.5 pt-2 text-[11.5px] font-semibold text-[var(--subtle)]">
-          <span>Suggested for you</span>
-          <button
-            type="button"
-            className="text-[#0095f6] hover:text-[#00376b] font-bold bg-transparent border-none p-0 cursor-pointer text-[12px]"
-          >
-            Follow
-          </button>
-        </div>
-      )}
+    <article className="feed-post-card pb-3 mb-1">
       <header className="flex items-center justify-between px-3.5 py-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="feed-story-avatar-wrap has-gradient-ring !w-10 !h-10 !p-0.5 shrink-0">
+          <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-[var(--line)] bg-gray-100 dark:bg-zinc-800">
             <img
               src={post.avatar}
               alt={post.user}
-              className="w-full h-full rounded-full object-cover"
+              className="w-full h-full object-cover"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src =
                   "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60";
@@ -137,27 +158,36 @@ function DynamicPostCard({ post }: PostItemProps) {
                 {post.user}
               </span>
               {post.isVerified && <IgVerified size={13} className="text-[#0095f6]" />}
-              {post.isSuggested && (
-                <span className="text-[11px] text-[#0095f6] font-semibold bg-blue-50 px-1.5 py-0.2 rounded">
-                  Suggested
-                </span>
-              )}
             </div>
-            {post.sub && (
-              <span className="text-[11.5px] text-[var(--subtle)] truncate flex items-center gap-1 mt-0.5">
-                {post.sub}
-              </span>
-            )}
+            <span className="text-[11.5px] text-[var(--subtle)] truncate flex items-center gap-1 mt-0.5 leading-tight">
+              {post.isSuggested ? "Suggested for you" : post.sub || "♫ Original Audio"}
+            </span>
           </div>
         </div>
 
-        <button
-          type="button"
-          className="p-1 text-inherit border-none bg-transparent cursor-pointer flex items-center opacity-80 hover:opacity-100"
-          aria-label="Options"
-        >
-          <IgTwoLines size={20} />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {(post.isSuggested || post.user !== profile.username) && (
+            <button
+              type="button"
+              onClick={() => setIsFollowing(!isFollowing)}
+              className={`rounded-lg transition-colors cursor-pointer border-none ${
+                isFollowing
+                  ? "bg-[var(--line)] text-ink"
+                  : "bg-[#efefef] hover:bg-[#dbdbdb] dark:bg-[#262626] dark:hover:bg-[#363636] text-ink"
+              }`}
+              style={{ fontSize: "14px", fontWeight: 600, padding: "7px 18px", lineHeight: "1" }}
+            >
+              {isFollowing ? "Following" : "Follow"}
+            </button>
+          )}
+          <button
+            type="button"
+            className="p-1 text-inherit border-none bg-transparent cursor-pointer flex items-center opacity-85 hover:opacity-100"
+            aria-label="Options"
+          >
+            <IgTwoLines size={26} />
+          </button>
+        </div>
       </header>
 
       {/* Post Media */}
@@ -214,48 +244,74 @@ function DynamicPostCard({ post }: PostItemProps) {
         )}
       </div>
 
-      {/* Post Actions: Like, Comment, Repost, Share, Bookmark */}
-      <div className="flex items-center justify-between px-3.5 pt-3 pb-1">
-        <div className="flex items-center gap-4">
+      {/* Carousel dots indicator */}
+      <div className="flex items-center justify-center gap-1.5 pt-2.5 pb-0.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#0095f6]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
+        <span className="w-1 h-1 rounded-full bg-[#dbdbdb]" />
+      </div>
+
+      {/* Post Actions with Inline Interaction Counts */}
+      <div className="flex items-center justify-between px-3.5 pt-1 pb-1.5">
+        <div className="flex items-center gap-4 sm:gap-5">
+          {/* Like */}
           <button
             type="button"
             onClick={toggleLike}
-            className={`p-0 bg-transparent border-none cursor-pointer transition-transform active:scale-75 ${
+            className={`flex items-center gap-1.5 p-0 bg-transparent border-none cursor-pointer transition-transform active:scale-90 ${
               liked ? "text-[#ff3040]" : "text-inherit"
             }`}
             aria-label="Like"
           >
-            <IgHeart size={26} active={liked} />
+            <IgHeart size={24} active={liked} />
+            <span className="text-[13.5px] font-semibold text-inherit tracking-tight">
+              {displayedLikes}
+            </span>
           </button>
 
+          {/* Comment */}
           <button
             type="button"
-            className="p-0 bg-transparent border-none cursor-pointer text-inherit hover:opacity-75 transition-opacity"
+            className="flex items-center gap-1.5 p-0 bg-transparent border-none cursor-pointer text-inherit hover:opacity-75 transition-opacity"
             aria-label="Comment"
           >
-            <IgComment size={25} />
+            <IgComment size={23} />
+            <span className="text-[13.5px] font-semibold text-inherit tracking-tight">
+              {displayedComments}
+            </span>
           </button>
 
+          {/* Repost */}
           <button
             type="button"
             onClick={() => setReposted(!reposted)}
-            className={`p-0 bg-transparent border-none cursor-pointer transition-colors ${
+            className={`flex items-center gap-1.5 p-0 bg-transparent border-none cursor-pointer transition-colors ${
               reposted ? "text-[#a855f7]" : "text-inherit"
             }`}
             aria-label="Repost"
           >
-            <IgRepost size={25} color={reposted ? "#a855f7" : "currentColor"} />
+            <IgRepost size={22} color={reposted ? "#a855f7" : "currentColor"} />
+            <span className="text-[13.5px] font-semibold text-inherit tracking-tight">
+              {displayedReposts}
+            </span>
           </button>
 
+          {/* Share */}
           <button
             type="button"
-            className="p-0 bg-transparent border-none cursor-pointer text-inherit hover:opacity-75 transition-opacity"
+            className="flex items-center gap-1.5 p-0 bg-transparent border-none cursor-pointer text-inherit hover:opacity-75 transition-opacity"
             aria-label="Share"
           >
-            <IgShare size={24} />
+            <IgShare size={22} />
+            <span className="text-[13.5px] font-semibold text-inherit tracking-tight">
+              {displayedShares}
+            </span>
           </button>
         </div>
 
+        {/* Bookmark */}
         <button
           type="button"
           onClick={() => setBookmarked(!bookmarked)}
@@ -264,34 +320,62 @@ function DynamicPostCard({ post }: PostItemProps) {
           }`}
           aria-label="Bookmark"
         >
-          <IgBookmark size={24} active={bookmarked} />
+          <IgBookmark size={23} active={bookmarked} />
         </button>
       </div>
 
-      {/* Post Details: Likes, Caption, Time */}
-      <div className="px-3.5 pt-1 space-y-1 text-[13.5px]">
-        <p className="font-bold">
-          {post.likes} {likeOffset > 0 ? `+${likeOffset}` : ""} likes
-        </p>
-        {post.caption && post.caption.trim().length > 0 && (
-          <p className="leading-snug">
-            <Link to="/profile" className="font-bold mr-1.5 text-inherit no-underline hover:underline">
+      {/* Post Details: Caption, See more, Timestamp & Translation */}
+      <div className="px-3.5 pt-0.5 space-y-1 text-[13.5px]">
+        {fullCaption.length > 0 && (
+          <div className="leading-snug">
+            <Link
+              to="/profile"
+              className="mr-1.5 no-underline hover:underline inline"
+              style={{ fontWeight: 700, color: "var(--ink)" }}
+            >
               {post.user}
             </Link>
-            <span className="whitespace-pre-line">{post.caption}</span>
-          </p>
+            {!isCaptionExpanded && isCaptionLong ? (
+              <span className="text-inherit">
+                {shortCaption}
+                <button
+                  type="button"
+                  onClick={() => setIsCaptionExpanded(true)}
+                  className="font-normal cursor-pointer bg-transparent border-none p-0 ml-1 inline text-[13.5px]"
+                  style={{ color: "#737373" }}
+                >
+                  ... more
+                </button>
+              </span>
+            ) : (
+              <span className="whitespace-pre-line text-inherit">
+                {showTranslation ? `Translated: ${fullCaption}` : fullCaption}
+                {isCaptionLong && isCaptionExpanded && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCaptionExpanded(false)}
+                    className="font-normal cursor-pointer bg-transparent border-none p-0 ml-1.5 text-xs inline"
+                    style={{ color: "#737373" }}
+                  >
+                    less
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
         )}
-        {post.comments && (
+
+        <div className="flex items-center gap-1.5 text-[11.5px] text-[var(--subtle)] pt-0.5">
+          <span>{displayTime}</span>
+          <span>•</span>
           <button
             type="button"
-            className="text-[12.5px] text-[var(--subtle)] bg-transparent border-none p-0 cursor-pointer block hover:underline"
+            onClick={() => setShowTranslation(!showTranslation)}
+            className="font-semibold text-inherit hover:underline bg-transparent border-none p-0 cursor-pointer text-[11.5px]"
           >
-            View all {post.comments} comments
+            {showTranslation ? "See original" : "See translation"}
           </button>
-        )}
-        <p className="text-[11px] uppercase tracking-wider text-[var(--subtle)] pt-0.5">
-          {post.time}
-        </p>
+        </div>
       </div>
     </article>
   );
@@ -307,7 +391,7 @@ function checkIsSplashNeeded(): boolean {
 }
 
 function HomeFeedPage() {
-  const { profile } = useProfile();
+  const { profile, cloneProfile } = useProfile();
   const { stories } = useHomeStories();
 
   const [isSplashActive, setIsSplashActive] = useState<boolean>(checkIsSplashNeeded);
@@ -332,6 +416,9 @@ function HomeFeedPage() {
       setIsSplashActive(true);
 
       const minSplashDelay = new Promise((resolve) => setTimeout(resolve, 1500));
+      const profilePromise = profile.username
+        ? (cloneProfile || cloneInstagramProfile)(profile.username)
+        : Promise.resolve({ success: true });
       const suggestedPromise = fetchAllFreshSuggestedPosts();
       const storyUsernames = stories.map((s) => s.username).filter(Boolean);
       const storyPromise =
@@ -339,9 +426,9 @@ function HomeFeedPage() {
           ? Promise.allSettled(storyUsernames.map((u) => fetchLiveUserData(u)))
           : Promise.resolve([]);
 
-      // Preload everything simultaneously while splash is showing
-      Promise.allSettled([suggestedPromise, storyPromise, minSplashDelay]).then(
-        ([sugRes, storyRes]) => {
+      // Preload everything simultaneously while splash is showing (User Profile + Suggested Feed + Stories)
+      Promise.allSettled([profilePromise, suggestedPromise, storyPromise, minSplashDelay]).then(
+        ([_profRes, sugRes, storyRes]) => {
           if (!active) return;
 
           // 1. Forward fresh live scraped posts to Home feed
@@ -375,7 +462,7 @@ function HomeFeedPage() {
             sessionStorage.setItem("ig_splash_completed_v3", "1");
           } catch {}
 
-          // 3. Feed and Story Avatars are 100% updated in state — smoothly fade out splash screen!
+          // 3. Feed, Profile data, Bottom Nav avatar, and Story Avatars are 100% updated in state — smoothly fade out splash screen!
           setIsSplashFading(true);
           setTimeout(() => {
             if (active) setIsSplashActive(false);
