@@ -24,6 +24,8 @@ import {
   IgBookmark,
   IgClock,
   IgMore,
+  IgBackArrow,
+  IgSkipRate,
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
@@ -103,7 +105,7 @@ function InsightHeader({
             title="Back to profile"
             className="iv-back-btn"
           >
-            <ChevronLeft size={28} strokeWidth={2.4} />
+            <IgBackArrow size={24} />
           </Link>
           <h1 className="iv-header-title">Reel insights</h1>
         </div>
@@ -366,7 +368,7 @@ function OverviewTab({
   const impactRates = [
     {
       key: "skip" as const,
-      Icon: IgClock,
+      Icon: IgSkipRate,
       label: "Skip rate",
       rate: `${insights.rates.skip.rate.toFixed(1)}%`,
       numRate: insights.rates.skip.rate,

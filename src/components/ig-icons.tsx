@@ -624,6 +624,36 @@ export const IgEye = ({ size = 20, ...p }: IconProps) => (
   </Svg>
 );
 
+export const IgBackArrow = ({ size = 24, ...p }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...p}
+  >
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
+);
+
+export const IgSkipRate = ({ size = 20, ...p }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    {...p}
+  >
+    <path d="M5.5 4a1 1 0 0 0-1 1v14a1 1 0 0 0 1.555.832l8-7a1 1 0 0 0 0-1.664l-8-7A1 1 0 0 0 5.5 4ZM18 4a1 1 0 0 0-1 1v14a1 1 0 1 0 2 0V5a1 1 0 0 0-1-1Z" />
+  </svg>
+);
+
+
 
 
 
