@@ -20,6 +20,7 @@ import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import {
   useProfile,
   formatCompactNumber,
+  formatPostDate,
   setSelectedPostIndex,
   type ProfilePost,
 } from "@/lib/profile-store";
@@ -387,7 +388,7 @@ function PostCardItem({
             </>
           )}
         </div>
-        <p className="post-view-age">{post.timestamp || "1 August"}</p>
+        <p className="post-view-age">{formatPostDate(post.timestamp)}</p>
       </div>
     </article>
   );

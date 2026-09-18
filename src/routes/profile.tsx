@@ -20,6 +20,7 @@ import {
   IgClip,
   IgCarouselIcon,
   IgPlay,
+  IgEye,
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import { EditProfileModal } from "@/components/edit-profile-modal";
@@ -425,8 +426,8 @@ function ProfilePage() {
                     <IgClip size={17} />
                   </span>
                   <span className="view-count">
-                    <IgPlay size={13} />
-                    {formatCompactNumber(post.views)}
+                    <IgEye size={13} />
+                    {formatCompactNumber(post.views || post.likes * 10 || 1200)}
                   </span>
                 </div>
               ))}
@@ -448,43 +449,52 @@ function ProfilePage() {
             </div>
           ) : (
             <section className="post-grid-wrap" aria-label="Photos and posts grid">
-              {profile.posts.map((post, idx) => (
-                <div
-                  key={post.id || idx}
-                  className="post-grid-item cursor-pointer"
-                  onClick={() => handlePostClick(idx)}
-                  title="View Post"
-                >
-                  <img
-                    src={post.thumbnail_src || post.display_url}
-                    alt={post.caption || "Post thumbnail"}
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
-                    }}
-                  />
-                  {post.is_video ? (
-                    <span className="post-grid-badge">
-                      <IgClip size={17} />
-                    </span>
-                  ) : (
-                    <span className="post-grid-badge">
-                      <IgCarouselIcon size={17} />
-                    </span>
-                  )}
-                  <div className="post-grid-overlay">
-                    <span className="flex items-center gap-1">
-                      <IgHeart size={16} fill="#ffffff" />
-                      {formatCompactNumber(post.likes)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <IgComment size={16} fill="#ffffff" />
-                      {formatCompactNumber(post.comments)}
-                    </span>
+              {profile.posts.map((post, idx) => {
+                const isReel = post.is_video || Boolean(post.video_url && post.video_url.length > 0);
+                return (
+                  <div
+                    key={post.id || idx}
+                    className="post-grid-item cursor-pointer"
+                    onClick={() => handlePostClick(idx)}
+                    title="View Post"
+                  >
+                    <img
+                      src={post.thumbnail_src || post.display_url}
+                      alt={post.caption || "Post thumbnail"}
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
+                      }}
+                    />
+                    {isReel ? (
+                      <span className="post-grid-badge">
+                        <IgClip size={17} />
+                      </span>
+                    ) : (
+                      <span className="post-grid-badge">
+                        <IgCarouselIcon size={17} />
+                      </span>
+                    )}
+                    {isReel && (
+                      <span className="view-count">
+                        <IgEye size={13} />
+                        {formatCompactNumber(post.views || post.likes * 10 || 1200)}
+                      </span>
+                    )}
+                    <div className="post-grid-overlay">
+                      <span className="flex items-center gap-1">
+                        <IgHeart size={16} fill="#ffffff" />
+                        {formatCompactNumber(post.likes)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <IgComment size={16} fill="#ffffff" />
+                        {formatCompactNumber(post.comments)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </section>
           )
         )}

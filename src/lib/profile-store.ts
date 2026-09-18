@@ -518,6 +518,49 @@ export function formatExactNumber(num: number): string {
   return num.toLocaleString();
 }
 
+export function formatPostDate(timestamp?: number | string): string {
+  if (!timestamp) return "1 August";
+
+  if (typeof timestamp === "string" && !/^\d+$/.test(timestamp.trim())) {
+    return timestamp;
+  }
+
+  const numericTs = typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
+  if (isNaN(numericTs) || numericTs <= 0) return "1 August";
+
+  const ms = numericTs < 10000000000 ? numericTs * 1000 : numericTs;
+  const date = new Date(ms);
+  if (isNaN(date.getTime())) return "1 August";
+
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  if (diffHours >= 0 && diffHours < 24) {
+    const hrs = Math.max(1, Math.floor(diffHours));
+    return `${hrs} ${hrs === 1 ? "hour" : "hours"} ago`;
+  }
+  if (diffHours >= 24 && diffHours < 24 * 7) {
+    const days = Math.floor(diffHours / 24);
+    return `${days} ${days === 1 ? "day" : "days"} ago`;
+  }
+
+  const day = date.getDate();
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const month = months[date.getMonth()];
+  const currentYear = new Date().getFullYear();
+  const postYear = date.getFullYear();
+
+  if (Math.abs(currentYear - postYear) >= 1) {
+    return `${day} ${month} ${postYear}`;
+  }
+  return `${day} ${month}`;
+}
+
+
 export function mapScrapedUserToProfile(user: ScrapedInstagramUser): ProfileData {
   const posts: ProfilePost[] = (user.edge_owner_to_timeline_media?.edges || []).map(
     (edge, idx) => {
