@@ -12,6 +12,8 @@ import {
   Edit3,
   Sliders,
   Eye,
+  X,
+  RotateCcw,
 } from "lucide-react";
 import {
   IgHeart,
@@ -20,6 +22,7 @@ import {
   IgShare,
   IgBookmark,
   IgClock,
+  IgMore,
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
@@ -27,6 +30,7 @@ import { useProfile, formatCompactNumber } from "@/lib/profile-store";
 import {
   loadPostInsights,
   savePostInsights,
+  getDefaultPostInsights,
   calculateMetricStatus,
   GraphSplineMath,
   type PostInsightsData,
@@ -78,45 +82,171 @@ function InsightHeader({
   isEditMode,
   onToggleEditMode,
   onOpenFullModal,
+  onResetInsights,
 }: {
   isEditMode: boolean;
   onToggleEditMode: () => void;
   onOpenFullModal: () => void;
+  onResetInsights: () => void;
 }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
   return (
-    <header className="iv-header flex items-center justify-between px-4 py-3">
-      <Link
-        to="/profile"
-        aria-label="Back to profile"
-        title="Back to profile"
-        className="iv-round-btn"
-      >
-        <ChevronLeft size={22} strokeWidth={2.4} />
-      </Link>
-
-      <h1 className="text-base font-bold tracking-tight text-ink">Reel insights</h1>
-
-      {/* Top Right Edit Mode Toggle Icon */}
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onToggleEditMode}
-          aria-label={isEditMode ? "Exit edit mode" : "Edit insights"}
-          title={isEditMode ? "Exit Edit Mode" : "Edit Insights & Graphs"}
-          className={`iv-round-btn transition-all ${
-            isEditMode
-              ? "bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white border-transparent shadow-md shadow-pink-500/25 scale-105"
-              : "hover:border-black"
-          }`}
+    <>
+      <header className="iv-header">
+        <Link
+          to="/profile"
+          aria-label="Back to profile"
+          title="Back to profile"
+          className="iv-back-btn"
         >
-          {isEditMode ? (
-            <Check size={20} strokeWidth={2.6} />
-          ) : (
-            <Pencil size={18} strokeWidth={2.2} />
-          )}
-        </button>
-      </div>
-    </header>
+          <ChevronLeft size={28} strokeWidth={2.4} />
+        </Link>
+
+        <h1 className="iv-header-title">Reel insights</h1>
+
+        {/* Top Right: Two Icons (Info icon + Three dots menu icon) */}
+        <div className="iv-header-actions">
+          <button
+            type="button"
+            onClick={() => setShowInfoModal(true)}
+            className="iv-icon-btn"
+            aria-label="Insights information"
+            title="About Reel Insights"
+          >
+            <Info size={22} strokeWidth={2} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowMenu(true)}
+            className={`iv-icon-btn ${isEditMode ? "text-[#e1306c]" : ""}`}
+            aria-label="More options"
+            title="Options & Edit Mode"
+          >
+            <IgMore size={22} />
+          </button>
+        </div>
+      </header>
+
+      {/* Options Menu Bottom Sheet */}
+      {showMenu && (
+        <div
+          className="clone-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowMenu(false);
+          }}
+        >
+          <div className="profile-menu-dialog" role="dialog" aria-modal="true">
+            <div className="clone-modal-drag-bar" />
+
+            <div className="clone-modal-header">
+              <h3>Insight Options</h3>
+              <button
+                type="button"
+                className="clone-modal-close-btn"
+                onClick={() => setShowMenu(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="profile-menu-list">
+              {/* Toggle Edit Mode */}
+              <button
+                type="button"
+                className={`profile-menu-item ${isEditMode ? "bg-[#e1306c]/10" : ""}`}
+                onClick={() => {
+                  onToggleEditMode();
+                  setShowMenu(false);
+                }}
+              >
+                <div className={`profile-menu-item-icon ${isEditMode ? "bg-[#e1306c] text-white" : "clone-grad"}`}>
+                  <Pencil size={18} />
+                </div>
+                <div className="profile-menu-item-text">
+                  <b>{isEditMode ? "Disable Edit Mode" : "Enable Edit Mode"}</b>
+                  <span>{isEditMode ? "Currently active — tap to lock metrics" : "Tap on any metric, percentage, or graph curve to edit"}</span>
+                </div>
+              </button>
+
+              {/* Advanced Editor Modal */}
+              <button
+                type="button"
+                className="profile-menu-item"
+                onClick={() => {
+                  setShowMenu(false);
+                  onOpenFullModal();
+                }}
+              >
+                <div className="profile-menu-item-icon">
+                  <Sliders size={18} />
+                </div>
+                <div className="profile-menu-item-text">
+                  <b>All-In-One Insights Editor</b>
+                  <span>Configure all views, retention points, and audience percentages</span>
+                </div>
+              </button>
+
+              {/* Reset to Default */}
+              <button
+                type="button"
+                className="profile-menu-item"
+                onClick={() => {
+                  onResetInsights();
+                  setShowMenu(false);
+                }}
+              >
+                <div className="profile-menu-item-icon">
+                  <RotateCcw size={18} />
+                </div>
+                <div className="profile-menu-item-text">
+                  <b>Reset Insights to Default</b>
+                  <span>Restore original realistic numbers for this reel</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info Modal */}
+      {showInfoModal && (
+        <div
+          className="clone-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowInfoModal(false);
+          }}
+        >
+          <div className="profile-menu-dialog p-6" role="dialog" aria-modal="true">
+            <div className="clone-modal-drag-bar" />
+            <div className="clone-modal-header mb-3">
+              <h3>About Reel Insights</h3>
+              <button
+                type="button"
+                className="clone-modal-close-btn"
+                onClick={() => setShowInfoModal(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-subtle leading-relaxed mb-4">
+              Reel insights help you understand how your reel is performing. View metrics such as total views over time, retention rate, accounts reached, and follower vs. non-follower breakdown.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowInfoModal(false)}
+              className="w-full py-2.5 bg-ink text-page font-semibold rounded-lg text-sm"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1245,6 +1375,17 @@ function InsightViewPage() {
     savePostInsights(copy);
   };
 
+  const handleResetInsights = () => {
+    const fresh = getDefaultPostInsights(postId, {
+      likes: post?.likes,
+      comments: post?.comments,
+      views: post?.views,
+      thumbnailUrl: imgUrl,
+    });
+    setInsights(fresh);
+    savePostInsights(fresh);
+  };
+
   return (
     <main className="iv-page min-h-screen bg-page text-ink">
       <div className="iv-phone pb-28">
@@ -1252,6 +1393,7 @@ function InsightViewPage() {
           isEditMode={isEditMode}
           onToggleEditMode={() => setIsEditMode(!isEditMode)}
           onOpenFullModal={() => setIsFullModalOpen(true)}
+          onResetInsights={handleResetInsights}
         />
 
         {/* Edit Mode Banner when activated */}
