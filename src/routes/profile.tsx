@@ -313,7 +313,7 @@ function ProfilePage() {
               title="Add new highlight"
             >
               <span className="new-highlight">
-                <IgPlus size={20} />
+                <IgPlus size={32} />
               </span>
               <small>New</small>
             </button>
@@ -327,7 +327,7 @@ function ProfilePage() {
                   title="Audience Insights"
                 >
                   <span className="discord-highlight">
-                    <IgDiscord size={24} />
+                    <IgDiscord size={44} />
                   </span>
                   <small>{hl.title}</small>
                 </Link>

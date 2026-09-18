@@ -378,8 +378,8 @@ button {
 }
 .highlights {
   display: flex;
-  gap: 12px;
-  padding: 6px 16px 2px;
+  gap: 14px;
+  padding: 10px 16px 6px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -391,22 +391,22 @@ button {
   display: none;
 }
 .highlight {
-  min-width: 58px;
-  max-width: 64px;
+  min-width: 88px;
+  max-width: 92px;
   padding: 0;
   border: 0;
   background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
   text-decoration: none;
   color: inherit;
 }
 .highlight > span {
-  width: 58px;
-  height: 58px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -416,12 +416,16 @@ button {
   transform: scale(0.95);
 }
 .highlight svg {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
 }
 .new-highlight {
   border: 1.5px solid var(--line);
   background: var(--background);
+}
+.new-highlight svg {
+  width: 32px;
+  height: 32px;
 }
 .discord-highlight {
   border: 2px solid var(--line);
@@ -429,14 +433,14 @@ button {
   color: var(--background);
 }
 .discord-highlight svg {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   fill: currentColor;
 }
 .custom-highlight-cover {
   border: 1.5px solid var(--line);
   background: var(--background);
-  padding: 2px;
+  padding: 3px;
   overflow: hidden;
 }
 .custom-highlight-cover img {
@@ -446,14 +450,15 @@ button {
   object-fit: cover;
 }
 .highlight small {
-  font-size: 11px;
-  max-width: 60px;
+  font-size: 12px;
+  max-width: 86px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
   font-weight: 500;
   color: var(--ink);
+  margin-top: 2px;
 }
 .content-tabs {
   height: 44px;
