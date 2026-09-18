@@ -664,14 +664,13 @@ button {
   width: min(100%, 500px);
   min-height: 100vh;
   margin: 0 auto;
-  overflow: hidden;
   background: #ffffff;
   box-shadow: 0 0 28px color-mix(in oklab, var(--ink) 10%, transparent);
 }
 .iv-header {
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: 50;
   height: 48px;
   padding: 0 14px;
   display: flex;
@@ -726,12 +725,12 @@ button {
 }
 .iv-thumb-wrap {
   position: relative;
-  width: 110px;
-  height: 195px;
-  border-radius: 12px;
+  width: 125px;
+  height: 222px;
+  border-radius: 14px;
   overflow: hidden;
-  margin: 6px auto 10px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  margin: 8px auto 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
   background: #000000;
   display: block;
   text-decoration: none;
@@ -792,7 +791,7 @@ button {
 .iv-tabs {
   position: sticky;
   top: 48px;
-  z-index: 30;
+  z-index: 40;
   background: #ffffff;
   height: 42px;
   display: grid;
@@ -825,7 +824,7 @@ button {
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 54px;
+  width: 78px;
   height: 2px;
   background: #000000;
   border-radius: 1px;
