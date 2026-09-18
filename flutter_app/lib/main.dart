@@ -638,6 +638,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _settings = InAppWebViewSettings(
       forceDark: ForceDark.OFF,
       forceDarkStrategy: ForceDarkStrategy.PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING,
+      algorithmicDarkeningAllowed: false,
       useShouldOverrideUrlLoading: true,
       useShouldInterceptRequest: true,
       mediaPlaybackRequiresUserGesture: false,
