@@ -3035,10 +3035,10 @@ button {
 .post-view-header {
   position: sticky;
   top: 0;
-  z-index: 40;
-  height: 52px;
+  z-index: 50;
+  height: 48px;
   background: var(--background);
-  border-bottom: 0.8px solid var(--line);
+  border-bottom: none;
   padding: 0 14px;
   display: flex;
   align-items: center;
@@ -3054,8 +3054,8 @@ button {
 }
 
 .post-view-card {
-  border-bottom: 0.8px solid var(--line);
-  margin-bottom: 8px;
+  border-bottom: none;
+  margin-bottom: 12px;
 }
 
 .post-view-author-row {
@@ -3087,7 +3087,7 @@ button {
 }
 
 .post-view-author-name {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   text-decoration: none;
@@ -3095,13 +3095,13 @@ button {
 }
 
 .post-view-author-sub {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--ink);
   opacity: 0.85;
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 .post-view-media-wrap {
@@ -3168,20 +3168,20 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px;
-  border-bottom: 0.8px solid var(--line);
+  padding: 10px 14px 6px;
+  border-bottom: none;
 }
 
 .post-view-insights-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   background: transparent;
   border: none;
   padding: 0;
   cursor: pointer;
   color: var(--ink);
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   text-decoration: none;
   font-family: inherit;
@@ -3192,33 +3192,38 @@ button {
 }
 
 .post-view-boost-btn {
-  padding: 8px 18px;
+  height: 32px;
+  padding: 0 14px;
   border-radius: 8px;
-  background: #0095f6;
+  background: #3875ea;
   color: #ffffff;
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 600;
   border: none;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s, transform 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s, transform 0.15s;
 }
 
 .post-view-boost-btn:active {
   transform: scale(0.97);
+  opacity: 0.9;
 }
 
 .post-view-actions-bar {
   display: flex;
   align-items: center;
-  padding: 12px 14px 4px;
+  padding: 8px 14px 4px;
 }
 
 .post-view-action-group {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--ink);
 }
@@ -3240,10 +3245,14 @@ button {
 }
 
 .post-view-caption-wrap {
-  padding: 10px 14px 16px;
-  font-size: 15px;
+  padding: 6px 14px 12px;
+  font-size: 14px;
   line-height: 1.35;
   color: var(--ink);
+}
+
+.post-view-caption-text {
+  word-break: break-word;
 }
 
 .post-view-caption-author {
@@ -3257,10 +3266,25 @@ button {
   text-decoration: underline;
 }
 
+.post-view-more-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-left: 3px;
+  color: var(--subtle, #8e8e93);
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.post-view-more-btn:hover {
+  text-decoration: underline;
+}
+
 .post-view-age {
-  font-size: 14px;
-  color: var(--subtle);
-  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--subtle, #8e8e93);
+  margin-top: 4px;
 }
 
 /* =========================================================================

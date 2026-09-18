@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft,
-  Eye,
   Volume2,
   VolumeX,
   Play,
@@ -15,6 +14,7 @@ import {
   IgShare,
   IgBookmark,
   IgTwoLines,
+  IgEye,
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import {
@@ -66,6 +66,7 @@ function PostCardItem({
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [videoError, setVideoError] = useState(false);
+  const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
 
   const initialVideo = (post.video_url || "").trim();
   const [videoSrc, setVideoSrc] = useState<string>(initialVideo);
@@ -173,7 +174,14 @@ function PostCardItem({
   const commentsDisplay = formatCompactNumber(post.comments);
   const viewsDisplay = formatCompactNumber(post.views || post.likes * 10 || 1200);
 
-  const hasDirectVideo = Boolean(videoSrc && !videoError && (videoSrc.includes(".mp4") || videoSrc.includes("blob:") || videoSrc.startsWith("/assets/")));
+  const hasDirectVideo = Boolean(
+    videoSrc &&
+      !videoError &&
+      (videoSrc.includes(".mp4") || videoSrc.includes("blob:") || videoSrc.startsWith("/assets/"))
+  );
+
+  const captionText = (post.caption || "").trim();
+  const shouldTruncate = captionText.length > 32 || captionText.includes("\n");
 
   return (
     <article className="post-view-card">
@@ -254,7 +262,7 @@ function PostCardItem({
           <>
             <img
               src={displayImage}
-              alt={post.caption || author}
+              alt={captionText || author}
               className="w-full h-full object-cover select-none"
               loading="lazy"
             />
@@ -277,7 +285,7 @@ function PostCardItem({
         )}
       </div>
 
-      {/* 3. View Insights & Boost Bar (Matching typography with Profile page) */}
+      {/* 3. View Insights & Boost Bar (Matching typography & colors) */}
       <div className="post-view-insights-bar">
         <button
           type="button"
@@ -288,7 +296,7 @@ function PostCardItem({
           className="post-view-insights-btn"
           title="View detailed performance insights"
         >
-          <Eye size={18} strokeWidth={2.2} />
+          <IgEye size={17} />
           <span>{viewsDisplay} · View insights</span>
         </button>
 
@@ -356,17 +364,30 @@ function PostCardItem({
         </button>
       </div>
 
-      {/* 5. Caption and Age */}
+      {/* 5. Caption with Home Feed Style Truncation and Post Age */}
       <div className="post-view-caption-wrap">
-        <p className="m-0">
+        <div className="post-view-caption-text">
           <Link to="/profile" className="post-view-caption-author">
             {author}
           </Link>
-          <span className="whitespace-pre-line">
-            {post.caption || "Moments & creativity ✨"}
-          </span>
-        </p>
-        <p className="post-view-age">2 days ago</p>
+          {isCaptionExpanded || !shouldTruncate ? (
+            <span className="whitespace-pre-line">
+              {captionText || "Moments & creativity ✨"}
+            </span>
+          ) : (
+            <>
+              <span>{captionText.slice(0, 32).trim()}</span>
+              <button
+                type="button"
+                onClick={() => setIsCaptionExpanded(true)}
+                className="post-view-more-btn"
+              >
+                ... more
+              </button>
+            </>
+          )}
+        </div>
+        <p className="post-view-age">{post.timestamp || "1 August"}</p>
       </div>
     </article>
   );
@@ -391,7 +412,7 @@ function PostViewPage() {
   return (
     <main className="min-h-screen bg-page text-ink">
       <div className="phone-shell pb-24 feed-phone-shell">
-        {/* Top Header: [< Back] Posts */}
+        {/* Top Header: [< Back] Posts (Sticky, no separator line) */}
         <header className="post-view-header">
           <div className="flex items-center gap-3">
             <button
@@ -409,7 +430,7 @@ function PostViewPage() {
           <div className="w-8" />
         </header>
 
-        {/* Scrollable List of Posts */}
+        {/* Scrollable List of Posts without top separator line */}
         <section aria-label="Posts list">
           {orderedPosts.map((post, idx) => {
             const originalIndex = postsList.findIndex((p) => p.id === post.id);
@@ -431,3 +452,4 @@ function PostViewPage() {
     </main>
   );
 }
+
