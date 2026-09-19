@@ -126,25 +126,26 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
   // 1. Initial Splash Screen (shown on cold start for all users)
   if (isInitialSplash) {
     return (
-      <div
-        className={`ig-splash-wrapper ${isSplashFading ? "ig-splash-fade-out" : ""}`}
+      <aside
+        className={`ig-splash-screen ${isSplashFading ? "is-fading" : ""}`}
+        aria-label="Instagram Splash"
         style={{ zIndex: 999999 }}
       >
         <div className="ig-splash-center">
-          <IgInstagramGlyph size={76} className="ig-splash-logo-pulse" />
-          <div className="ig-splash-loading-bar">
-            <div className="ig-splash-loading-bar-fill" />
+          <div className="ig-splash-glyph-wrap">
+            <IgInstagramGlyph size={76} />
           </div>
         </div>
 
-        <div className="ig-splash-footer">
+        <footer className="ig-splash-footer">
           <span className="ig-splash-from-text">from</span>
-          <div className="ig-splash-meta-brand">
-            <IgMetaLogo size={18} />
-            <span className="ig-splash-meta-text">Meta</span>
-          </div>
-        </div>
-      </div>
+          <img
+            src="/images/meta_logo.png"
+            alt="Meta"
+            className="ig-splash-meta-img"
+          />
+        </footer>
+      </aside>
     );
   }
 

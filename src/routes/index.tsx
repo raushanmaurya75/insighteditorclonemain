@@ -1085,17 +1085,15 @@ function HomeFeedPage() {
             <div className="ig-splash-glyph-wrap">
               <IgInstagramGlyph size={76} />
             </div>
-            <div className="ig-splash-loading-bar">
-              <div className="ig-splash-loading-bar-fill" />
-            </div>
           </div>
 
           <footer className="ig-splash-footer">
             <span className="ig-splash-from-text">from</span>
-            <div className="ig-splash-meta-brand">
-              <IgMetaLogo size={22} className="ig-splash-meta-icon" />
-              <span>Meta</span>
-            </div>
+            <img
+              src="/images/meta_logo.png"
+              alt="Meta"
+              className="ig-splash-meta-img"
+            />
           </footer>
         </aside>
       )}
