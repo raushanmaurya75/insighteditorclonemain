@@ -62,15 +62,6 @@ export const Route = createFileRoute("/")({
   component: HomeFeedPage,
 });
 
-const SUGGESTED_QUICK_ACCOUNTS = [
-  "m0tivati0nal_qu0ts",
-  "cristiano",
-  "virat.kohli",
-  "leomessi",
-  "natgeo",
-  "therock",
-];
-
 interface PostItemProps {
   post: HomeFeedPost;
 }
@@ -87,6 +78,7 @@ function parseNumericCount(val: string | number | undefined, fallback: number = 
 
 function DynamicPostCard({ post }: PostItemProps) {
   const { profile } = useProfile();
+  const { stories } = useHomeStories();
   const [liked, setLiked] = useState(false);
   const [likeOffset, setLikeOffset] = useState(0);
   const [bookmarked, setBookmarked] = useState(false);
@@ -96,6 +88,16 @@ function DynamicPostCard({ post }: PostItemProps) {
   const [showHeartPop, setShowHeartPop] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+
+  const isOwnPost = post.user.toLowerCase() === profile.username.toLowerCase();
+  const isStoryAccount = stories.some((s) => s.username.toLowerCase() === post.user.toLowerCase());
+  const showFollowButton = !isOwnPost && !isStoryAccount;
+  const isSuggested = !isOwnPost && !isStoryAccount && Boolean(post.isSuggested);
+  const isCarousel = Boolean(
+    (post as any).is_carousel ||
+    (post as any).isCarousel ||
+    (post.count && post.count.includes("/") && post.count !== "1/1")
+  );
 
   const handleDoubleTap = () => {
     if (!liked) {
@@ -160,13 +162,13 @@ function DynamicPostCard({ post }: PostItemProps) {
               {post.isVerified && <IgVerified size={13} className="text-[#0095f6]" />}
             </div>
             <span className="text-[11.5px] text-[var(--subtle)] truncate flex items-center gap-1 mt-0.5 leading-tight">
-              {post.isSuggested ? "Suggested for you" : post.sub || "♫ Original Audio"}
+              {isSuggested ? "Suggested for you" : post.sub || "♫ Original Audio"}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {(post.isSuggested || post.user !== profile.username) && (
+          {showFollowButton && (
             <button
               type="button"
               onClick={() => setIsFollowing(!isFollowing)}
@@ -244,14 +246,16 @@ function DynamicPostCard({ post }: PostItemProps) {
         )}
       </div>
 
-      {/* Carousel dots indicator */}
-      <div className="flex items-center justify-center gap-1.5 pt-2.5 pb-0.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#0095f6]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
-        <span className="w-1 h-1 rounded-full bg-[#dbdbdb]" />
-      </div>
+      {/* Carousel dots indicator - only for carousel posts */}
+      {isCarousel && (
+        <div className="flex items-center justify-center gap-1.5 pt-2.5 pb-0.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#0095f6]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#dbdbdb]" />
+        </div>
+      )}
 
       {/* Post Actions with Inline Interaction Counts */}
       <div className="flex items-center justify-between px-3.5 pt-1 pb-1.5">
@@ -388,6 +392,57 @@ function checkIsSplashNeeded(): boolean {
   } catch {
     return false;
   }
+}
+
+function shuffleFeedPosts(posts: HomeFeedPost[]): HomeFeedPost[] {
+  if (posts.length <= 1) return posts;
+  const pool = [...posts];
+
+  // Fisher-Yates shuffle
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  // De-duplicate consecutive posts from the same author
+  const result: HomeFeedPost[] = [];
+  const deferred: HomeFeedPost[] = [];
+
+  for (const post of pool) {
+    if (result.length > 0 && result[result.length - 1].user.toLowerCase() === post.user.toLowerCase()) {
+      deferred.push(post);
+    } else {
+      result.push(post);
+      if (deferred.length > 0) {
+        const defIdx = deferred.findIndex((d) => d.user.toLowerCase() !== post.user.toLowerCase());
+        if (defIdx !== -1) {
+          result.push(deferred.splice(defIdx, 1)[0]);
+        }
+      }
+    }
+  }
+
+  // Distribute any remaining deferred posts with maximal author spacing
+  for (const defPost of deferred) {
+    let inserted = false;
+    for (let i = 0; i < result.length; i++) {
+      const prev = result[i];
+      const next = result[i + 1];
+      if (
+        prev.user.toLowerCase() !== defPost.user.toLowerCase() &&
+        (!next || next.user.toLowerCase() !== defPost.user.toLowerCase())
+      ) {
+        result.splice(i + 1, 0, defPost);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) {
+      result.push(defPost);
+    }
+  }
+
+  return result;
 }
 
 function HomeFeedPage() {
@@ -568,7 +623,7 @@ function HomeFeedPage() {
     }
   };
 
-  // Helper to build a randomized (non-serial) feed across all added usernames + suggested posts
+  // Helper to build a truly randomized, non-serial home feed
   const combinedFeed = useMemo<HomeFeedPost[]>(() => {
     // 1. User's own cloned profile posts
     const userProfilePosts: HomeFeedPost[] = (profile.posts || []).map((p, idx) => ({
@@ -588,77 +643,38 @@ function HomeFeedPage() {
       is_video: p.is_video,
       video_url: p.video_url,
       shortcode: p.shortcode,
+      isSuggested: false,
     }));
 
-    // 2. Group regular posts by username queue (using fresh live fetched posts if available)
-    const postsByUser = new Map<string, HomeFeedPost[]>();
-
-    if (userProfilePosts.length > 0) {
-      postsByUser.set(profile.username, [...userProfilePosts]);
-    }
+    // 2. Story accounts posts (marked isSuggested: false)
+    const storyPosts: HomeFeedPost[] = [];
+    const storyUserSet = new Set(stories.map((s) => s.username.toLowerCase()));
 
     stories.forEach((s) => {
       const livePosts = liveStoriesPosts.get(s.username);
       const postList = livePosts && livePosts.length > 0 ? livePosts : s.posts;
-      if (postList && postList.length > 0) {
-        postsByUser.set(s.username, [...postList]);
-      }
-    });
-
-    // Randomized round-robin interleaving so posts from different usernames appear mixed, not serial
-    const shuffledRegularPosts: HomeFeedPost[] = [];
-    const usernames = Array.from(postsByUser.keys());
-
-    let hasRemaining = true;
-    let round = 0;
-    while (hasRemaining && round < 50) {
-      hasRemaining = false;
-      // Seeded/pseudo-random sort of usernames per round to ensure diverse user alternation
-      const roundOrder = [...usernames].sort((a, b) => {
-        const hashA = (a.charCodeAt(0) * 37 + a.length * 13 + round * 19) % 100;
-        const hashB = (b.charCodeAt(0) * 37 + b.length * 13 + round * 19) % 100;
-        return hashA - hashB;
+      (postList || []).forEach((p) => {
+        storyPosts.push({
+          ...p,
+          isSuggested: false,
+        });
       });
-
-      for (const u of roundOrder) {
-        const queue = postsByUser.get(u);
-        if (queue && queue.length > 0) {
-          const nextPost = queue.shift()!;
-          shuffledRegularPosts.push(nextPost);
-          if (queue.length > 0) hasRemaining = true;
-        }
-      }
-      round++;
-    }
-
-    // 3. Fresh live suggested posts from the 5 pre-added accounts
-    const suggestedPool: HomeFeedPost[] = freshSuggestedPosts.filter(Boolean);
-
-    // 4. Interleave suggested posts into the feed evenly
-    const result: HomeFeedPost[] = [];
-    let sugIdx = 0;
-
-    if (shuffledRegularPosts.length === 0) {
-      return suggestedPool;
-    }
-
-    shuffledRegularPosts.forEach((p, idx) => {
-      result.push(p);
-      // Insert a suggested post periodically
-      if ((idx + 1) % 2 === 0 && sugIdx < suggestedPool.length) {
-        result.push(suggestedPool[sugIdx]);
-        sugIdx++;
-      }
     });
 
-    // Append any remaining suggested posts
-    while (sugIdx < suggestedPool.length) {
-      result.push(suggestedPool[sugIdx]);
-      sugIdx++;
-    }
+    // 3. Suggested posts - only from accounts that are NOT in stories and NOT the current user
+    const suggestedPool: HomeFeedPost[] = freshSuggestedPosts
+      .filter((p) => Boolean(p) && !storyUserSet.has(p.user.toLowerCase()) && p.user.toLowerCase() !== profile.username.toLowerCase())
+      .map((p) => ({
+        ...p,
+        isSuggested: true,
+      }));
 
-    return result;
+    const allFeedPosts = [...userProfilePosts, ...storyPosts, ...suggestedPool];
+    if (allFeedPosts.length === 0) return [];
+
+    return shuffleFeedPosts(allFeedPosts);
   }, [profile, stories, freshSuggestedPosts, liveStoriesPosts]);
+
 
   const isStoriesFull = stories.length >= 10;
 
@@ -855,36 +871,6 @@ function HomeFeedPage() {
               {storyError && (
                 <p className="text-[11.5px] text-red-500 font-medium">{storyError}</p>
               )}
-
-              {/* Quick Suggestion Chips */}
-              <div>
-                <p className="text-[11.5px] font-semibold text-subtle mb-1.5">
-                  Quick Suggestions (Tap to add):
-                </p>
-                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar flex-wrap">
-                  {SUGGESTED_QUICK_ACCOUNTS.map((uname) => {
-                    const isAdded = stories.some(
-                      (s) => s.username.toLowerCase() === uname.toLowerCase()
-                    );
-                    return (
-                      <button
-                        key={uname}
-                        type="button"
-                        disabled={isAdded || isStoriesFull || isAddingStory}
-                        onClick={() => handleAddStory(uname)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium border shrink-0 flex items-center gap-1 cursor-pointer transition-all ${
-                          isAdded
-                            ? "bg-gray-100 text-subtle border-transparent opacity-60 cursor-default"
-                            : "bg-white text-ink border-[#dbdbdb] hover:border-[#0095f6]"
-                        }`}
-                      >
-                        {isAdded && <CheckCircle2 size={11} className="text-green-500" />}
-                        <span>@{uname}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
               <div className="h-px bg-[#ededed] my-2" />
 
