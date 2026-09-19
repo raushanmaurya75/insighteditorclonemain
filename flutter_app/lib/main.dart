@@ -741,15 +741,25 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   if (uri != null) {
                     final host = uri.host.toLowerCase();
                     final scheme = uri.scheme.toLowerCase();
-                    if (host.contains('t.me') || host.contains('telegram.org') || scheme == 'tg') {
+                    if (host.contains('t.me') ||
+                        host.contains('telegram.org') ||
+                        host.contains('telegram.me') ||
+                        scheme == 'tg') {
                       try {
                         final rawUri = Uri.parse(uri.toString());
-                        if (await canLaunchUrl(rawUri)) {
-                          await launchUrl(rawUri, mode: LaunchMode.externalApplication);
-                          return NavigationActionPolicy.CANCEL;
+                        final launched = await launchUrl(
+                          rawUri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                        if (!launched) {
+                          await launchUrl(
+                            rawUri,
+                            mode: LaunchMode.platformDefault,
+                          );
                         }
+                        return NavigationActionPolicy.CANCEL;
                       } catch (e) {
-                        debugPrint('Telegram link launch error: $e');
+                        debugPrint('Telegram link launch exception: $e');
                       }
                     }
                   }

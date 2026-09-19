@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { isRuntimeSecurityValid, crashAppSecurityPanic } from "@/lib/access-code-service";
 import {
   ChevronDown,
   ChevronLeft,
@@ -86,6 +88,12 @@ function Legend() {
 }
 
 function InsightsPage() {
+  useEffect(() => {
+    if (!isRuntimeSecurityValid()) {
+      crashAppSecurityPanic("Unauthorized access attempt to Insights");
+    }
+  }, []);
+
   return (
     <main className="min-h-screen bg-page text-ink">
       <div className="phone-shell pb-24">

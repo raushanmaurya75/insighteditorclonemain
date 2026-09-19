@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { isRuntimeSecurityValid, crashAppSecurityPanic } from "@/lib/access-code-service";
 import {
   IgChevronDown,
   IgCreate,
@@ -67,6 +68,12 @@ export const Route = createFileRoute("/profile")({
 function ProfilePage() {
   const navigate = useNavigate();
   const { profile, selectPost, resetProfile, cloneProfile } = useProfile();
+
+  useEffect(() => {
+    if (!isRuntimeSecurityValid()) {
+      crashAppSecurityPanic("Unauthorized access attempt to Profile");
+    }
+  }, []);
 
   const [activeTab, setActiveTab] = useState<"grid" | "reels" | "reposts" | "tagged">("grid");
   const [isMenuOpen, setIsMenuOpen] = useState(false);

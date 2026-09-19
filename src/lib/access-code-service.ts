@@ -27,6 +27,9 @@ export const ACCESS_CODES_COLLECTION = "cloner_access_codes";
 const SAVED_CODE_STORAGE_KEY = "ig_cloner_access_code_v2";
 const DEVICE_ID_STORAGE_KEY = "ig_cloner_device_id_v2";
 const RUNTIME_SECURITY_SIGNATURE = "IG_SECURITY_INTEGRITY_SALT_2026_ACTIVE";
+const SECURITY_TOKEN_STORAGE_KEY = "ig_sec_token_v2";
+
+export const TELEGRAM_SUPPORT_URL = "https://t.me/instaji?text=I%20want%20access%20code%20for%20insight%20editor%20id%20clonner";
 
 export interface AccessCodeVerificationResult {
   isValid: boolean;
@@ -209,7 +212,14 @@ export async function performSecurityHeartbeatCheck(): Promise<{
 }> {
   const code = getSavedAccessCode();
   if (!code) {
-    return { isValid: false, reason: "No access code found." };
+    return { isValid: false, reason: "No access code found. Session terminated." };
+  }
+
+  // Check memory tamper token
+  const token = sessionStorage.getItem(SECURITY_TOKEN_STORAGE_KEY);
+  if (!token || token !== RUNTIME_SECURITY_SIGNATURE) {
+    clearSavedAccessCode();
+    return { isValid: false, reason: "Security integrity violation detected." };
   }
 
   const deviceId = getPersistentDeviceId();
@@ -248,16 +258,49 @@ export async function performSecurityHeartbeatCheck(): Promise<{
 
     return { isValid: true };
   } catch {
-    // If transient offline, allow session to continue until reconnect
-    return { isValid: true };
+    // If transient offline, check local token validity
+    return { isValid: Boolean(token && token === RUNTIME_SECURITY_SIGNATURE) };
   }
+}
+
+/**
+ * Anti-Tamper App Lockdown: clears memory, wipes caches, and halts execution.
+ */
+export function crashAppSecurityPanic(reason: string = "Security tamper detected") {
+  clearSavedAccessCode();
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+  } catch {}
+
+  if (typeof document !== "undefined") {
+    document.body.innerHTML = `
+      <div style="position:fixed;inset:0;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;padding:24px;text-align:center;z-index:99999999;">
+        <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:8px;color:#ff4444;">App Integrity Violation</h2>
+        <p style="font-size:13px;color:#aaa;max-width:320px;line-height:1.5;">${reason}. Unauthorized modification or bypass attempt detected. Application locked.</p>
+        <button onclick="window.location.reload()" style="margin-top:20px;background:#fff;color:#000;border:none;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;">Restart App</button>
+      </div>
+    `;
+  }
+  throw new Error(`[CRITICAL_SECURITY_PANIC]: ${reason}`);
+}
+
+/**
+ * Validates whether the current runtime environment is authenticated and untouched.
+ */
+export function isRuntimeSecurityValid(): boolean {
+  if (typeof window === "undefined") return true;
+  const code = getSavedAccessCode();
+  const token = sessionStorage.getItem(SECURITY_TOKEN_STORAGE_KEY);
+  return Boolean(code && token === RUNTIME_SECURITY_SIGNATURE);
 }
 
 export function saveLocalAccessCode(code: string) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(SAVED_CODE_STORAGE_KEY, code.trim().toUpperCase());
-    sessionStorage.setItem("ig_sec_token", RUNTIME_SECURITY_SIGNATURE);
+    sessionStorage.setItem(SECURITY_TOKEN_STORAGE_KEY, RUNTIME_SECURITY_SIGNATURE);
   } catch {}
 }
 
@@ -274,6 +317,6 @@ export function clearSavedAccessCode() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(SAVED_CODE_STORAGE_KEY);
-    sessionStorage.removeItem("ig_sec_token");
+    sessionStorage.removeItem(SECURITY_TOKEN_STORAGE_KEY);
   } catch {}
 }

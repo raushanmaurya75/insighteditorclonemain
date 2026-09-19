@@ -24,6 +24,7 @@ import {
   setSelectedPostIndex,
   type ProfilePost,
 } from "@/lib/profile-store";
+import { isRuntimeSecurityValid, crashAppSecurityPanic } from "@/lib/access-code-service";
 
 export const Route = createFileRoute("/post-view")({
   head: () => ({
@@ -397,6 +398,12 @@ function PostCardItem({
 function PostViewPage() {
   const navigate = useNavigate();
   const { profile } = useProfile();
+
+  useEffect(() => {
+    if (!isRuntimeSecurityValid()) {
+      crashAppSecurityPanic("Unauthorized access attempt to Post View");
+    }
+  }, []);
 
   const postsList = profile.posts.length > 0 ? profile.posts : [];
   const selectedIdx =

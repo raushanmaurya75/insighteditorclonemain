@@ -13,45 +13,55 @@ import {
   performSecurityHeartbeatCheck,
   getSavedAccessCode,
   clearSavedAccessCode,
+  TELEGRAM_SUPPORT_URL,
   type AccessCodeVerificationResult,
 } from "@/lib/access-code-service";
+import { IgInstagramGlyph, IgMetaLogo } from "@/components/ig-icons";
 
 interface AccessCodeGatekeeperProps {
   children: React.ReactNode;
 }
 
 export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isInitialSplash, setIsInitialSplash] = useState(true);
+  const [isSplashFading, setIsSplashFading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [accessCodeInput, setAccessCodeInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 1. Check saved session on mount
+  // 1. Initial Splash Screen + Live Auth Validation on App Start
   useEffect(() => {
     let mounted = true;
 
-    async function checkAuth() {
-      const saved = getSavedAccessCode();
-      if (!saved) {
-        if (mounted) {
-          setIsCheckingSession(false);
-          setIsAuthenticated(false);
+    async function handleAppLaunch() {
+      const minSplashTime = new Promise((r) => setTimeout(r, 1800));
+      const authPromise = checkSavedSessionLive();
+
+      const [_, authResult] = await Promise.all([minSplashTime, authPromise]);
+
+      if (!mounted) return;
+
+      if (authResult.isValid) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+        const saved = getSavedAccessCode();
+        if (saved && authResult.message) {
+          setErrorMessage(authResult.message);
         }
-        return;
       }
 
-      const res = await checkSavedSessionLive();
-      if (mounted) {
-        setIsAuthenticated(res.isValid);
-        setIsCheckingSession(false);
-        if (!res.isValid && saved) {
-          setErrorMessage(res.message);
+      // Smooth fade out of splash screen
+      setIsSplashFading(true);
+      setTimeout(() => {
+        if (mounted) {
+          setIsInitialSplash(false);
         }
-      }
+      }, 350);
     }
 
-    checkAuth();
+    handleAppLaunch();
 
     return () => {
       mounted = false;
@@ -60,13 +70,13 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
 
   // 2. Real-Time Background Security Heartbeat (checks every 12 seconds)
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isInitialSplash) return;
 
     const intervalId = setInterval(async () => {
       try {
         const check = await performSecurityHeartbeatCheck();
         if (!check.isValid) {
-          // Security violation or expiry/revocation detected in background!
+          // Security violation or expiry/revocation detected in background
           clearSavedAccessCode();
           setIsAuthenticated(false);
           setErrorMessage(check.reason || "Access license revoked or expired.");
@@ -79,7 +89,7 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
     return () => {
       clearInterval(intervalId);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isInitialSplash]);
 
   const handleVerify = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -105,23 +115,35 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
 
   const handleContactTelegram = () => {
     try {
-      const targetUrl = "https://t.me/instaji";
       if (typeof window !== "undefined") {
-        window.location.href = targetUrl;
+        window.location.href = TELEGRAM_SUPPORT_URL;
       }
     } catch {
-      window.open("https://t.me/instaji", "_blank", "noopener,noreferrer");
+      window.open(TELEGRAM_SUPPORT_URL, "_blank", "noopener,noreferrer");
     }
   };
 
-  // 1. Initial Checking Loading Screen
-  if (isCheckingSession) {
+  // 1. Initial Splash Screen (shown on cold start for all users)
+  if (isInitialSplash) {
     return (
-      <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center shadow-lg shadow-pink-500/25 mb-4 animate-pulse">
-          <Camera size={32} className="text-white" />
+      <div
+        className={`ig-splash-wrapper ${isSplashFading ? "ig-splash-fade-out" : ""}`}
+        style={{ zIndex: 999999 }}
+      >
+        <div className="ig-splash-center">
+          <IgInstagramGlyph size={76} className="ig-splash-logo-pulse" />
+          <div className="ig-splash-loading-bar">
+            <div className="ig-splash-loading-bar-fill" />
+          </div>
         </div>
-        <div className="w-6 h-6 border-2 border-[#dc2743] border-t-transparent rounded-full animate-spin" />
+
+        <div className="ig-splash-footer">
+          <span className="ig-splash-from-text">from</span>
+          <div className="ig-splash-meta-brand">
+            <IgMetaLogo size={18} />
+            <span className="ig-splash-meta-text">Meta</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -129,7 +151,7 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
   // 2. Unauthenticated: Full-Screen Access Code Gatekeeper
   if (!isAuthenticated) {
     return (
-      <div className="fixed inset-0 z-[99999] bg-white text-ink flex flex-col items-center justify-center p-6 overflow-y-auto selection:bg-[#dc2743]/20">
+      <div className="fixed inset-0 z-[99999] bg-white text-ink flex flex-col items-center justify-center p-6 overflow-y-auto selection:bg-[#dc2743]/20 animate-fade-in">
         <div className="w-full max-w-[400px] flex flex-col items-center">
           {/* Instagram Gradient Logo */}
           <div className="w-20 h-20 rounded-[22px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center shadow-xl shadow-pink-500/25 mb-6">
@@ -201,9 +223,9 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
               )}
             </button>
 
-            {/* Contact Support Telegram Button */}
+            {/* Contact Support Telegram Button with pre-filled text */}
             <a
-              href="https://t.me/instaji"
+              href={TELEGRAM_SUPPORT_URL}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => {

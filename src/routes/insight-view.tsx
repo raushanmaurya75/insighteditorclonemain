@@ -30,6 +30,7 @@ import {
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
 import { useProfile, formatCompactNumber } from "@/lib/profile-store";
+import { isRuntimeSecurityValid, crashAppSecurityPanic } from "@/lib/access-code-service";
 import {
   loadPostInsights,
   savePostInsights,
@@ -1300,6 +1301,12 @@ function AudienceTab({
 }
 
 function InsightViewPage() {
+  useEffect(() => {
+    if (!isRuntimeSecurityValid()) {
+      crashAppSecurityPanic("Unauthorized access attempt to Reel Insights");
+    }
+  }, []);
+
   const [tab, setTab] = useState<Tab>("overview");
   const [isEditMode, setIsEditMode] = useState(false);
   const [isFullModalOpen, setIsFullModalOpen] = useState(false);

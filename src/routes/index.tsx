@@ -41,6 +41,7 @@ import {
   type HomeFeedPost,
   type HomeStoryAccount,
 } from "@/lib/profile-store";
+import { isRuntimeSecurityValid, crashAppSecurityPanic } from "@/lib/access-code-service";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -515,7 +516,14 @@ function HomeFeedPage() {
   const { profile, cloneProfile } = useProfile();
   const { stories } = useHomeStories();
 
-  const [isSplashActive, setIsSplashActive] = useState<boolean>(checkIsSplashNeeded);
+  // Hard anti-bypass check: if unauthorized, panic & lockdown
+  useEffect(() => {
+    if (!isRuntimeSecurityValid()) {
+      crashAppSecurityPanic("Unauthorized access attempt to Home Feed");
+    }
+  }, []);
+
+  const [isSplashActive, setIsSplashActive] = useState<boolean>(false);
   const [isSplashFading, setIsSplashFading] = useState(false);
 
   const [isManageStoriesOpen, setIsManageStoriesOpen] = useState(false);
