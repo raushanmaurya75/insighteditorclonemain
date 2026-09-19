@@ -62,9 +62,11 @@ flutter:
   assets:
     - assets/web/
     - assets/web/assets/
+    - assets/web/images/
     - assets/web/videos/
     - dist/
     - dist/assets/
+    - dist/images/
     - dist/videos/
 
   # An image asset can refer to one or more resolution-specific "variants", see
