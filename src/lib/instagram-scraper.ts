@@ -381,6 +381,13 @@ export async function scrapeInstagramProfile(
                       pNode.product_type === "clips" ||
                       Boolean(pNode.is_video);
 
+                    const rawVideo = String(
+                      pNode.video_url ||
+                      pNode.video_versions?.[0]?.url ||
+                      pNode.playable_url ||
+                      ""
+                    );
+
                     const likes =
                       pNode.like_count ||
                       pNode.edge_media_preview_like?.count ||
@@ -400,7 +407,7 @@ export async function scrapeInstagramProfile(
                       is_video: isVid,
                       display_url: buildProxyUrl(displayUri, origin),
                       thumbnail_src: buildProxyUrl(displayUri, origin),
-                      video_url: isVid ? undefined : undefined,
+                      video_url: rawVideo ? buildProxyUrl(rawVideo, origin) : undefined,
                       edge_media_preview_like: { count: likes },
                       edge_media_to_comment: { count: comments },
                       video_view_count: views,
@@ -428,6 +435,12 @@ export async function scrapeInstagramProfile(
                     const displayUri = String(pNode.display_url || pNode.thumbnail_src || "");
                     const capText = String(pNode.edge_media_to_caption?.edges?.[0]?.node?.text || "");
                     const isVid = Boolean(pNode.is_video);
+                    const rawVideo = String(
+                      pNode.video_url ||
+                      pNode.video_versions?.[0]?.url ||
+                      pNode.playable_url ||
+                      ""
+                    );
                     const likes =
                       pNode.edge_media_preview_like?.count ||
                       (followerCount > 0 ? Math.max(1, Math.round(followerCount * 0.32)) : 16);
@@ -444,7 +457,7 @@ export async function scrapeInstagramProfile(
                       is_video: isVid,
                       display_url: buildProxyUrl(displayUri, origin),
                       thumbnail_src: buildProxyUrl(displayUri, origin),
-                      video_url: pNode.video_url ? buildProxyUrl(pNode.video_url, origin) : undefined,
+                      video_url: rawVideo ? buildProxyUrl(rawVideo, origin) : undefined,
                       edge_media_preview_like: { count: likes },
                       edge_media_to_comment: { count: comments },
                       video_view_count: views,
@@ -902,34 +915,120 @@ export async function fetchPostDetails(
 
   const scMatch = cleanUrl.match(/\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
   const shortcode = scMatch ? scMatch[1] : "";
+  const isRealShortcode = shortcode && !shortcode.startsWith("post_") && !shortcode.startsWith("sc_");
   let videoUrl = "";
+  let imageUrl = "";
 
-  // Try Strategy 1: Embed endpoint
-  if (shortcode) {
+  if (isRealShortcode) {
+    // Strategy 1: Direct Instagram Post / Reel page scrape with browser headers
     try {
-      const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`;
-      const resp = await fetch(embedUrl, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-          Accept: "text/html,*/*",
-          Referer: "https://www.instagram.com/",
-        },
-        signal: AbortSignal.timeout(8000),
-      });
+      const pageUrl = `https://www.instagram.com/p/${shortcode}/`;
+      let pageResp: Response | null = null;
+      try {
+        pageResp = await fetch(pageUrl, {
+          headers: IG_DESKTOP_HEADERS,
+          signal: AbortSignal.timeout(9000),
+        });
+      } catch {
+        try {
+          pageResp = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(pageUrl)}`, {
+            signal: AbortSignal.timeout(9000),
+          });
+        } catch {}
+      }
 
-      if (resp.ok) {
-        const body = await resp.text();
-        const found = deepFindVideoUrl(body);
-        if (found) videoUrl = found;
+      if (pageResp && pageResp.ok) {
+        const htmlText = await pageResp.text();
+
+        // 1. Script JSON parsing
+        const scriptJsons = Array.from(
+          htmlText.matchAll(/<script[^>]+type=["']application\/json["'][^>]*>(.*?)<\/script>/gs)
+        ).map((m) => m[1]);
+
+        for (const raw of scriptJsons) {
+          try {
+            const obj = JSON.parse(raw);
+            const found = deepFindVideoUrl(obj);
+            if (found) {
+              videoUrl = found;
+              break;
+            }
+          } catch {}
+        }
+
+        // 2. Generic script blocks containing video_url
         if (!videoUrl) {
-          const m = body.match(/(?:VideoURL|video_url|src)[":,\s]+([^"<\s]+\.mp4[^"<\s]*)/i);
-          if (m && m[1]) {
-            videoUrl = m[1].replace(/\\\//g, "/").replace(/&amp;/g, "&");
+          const allScripts = Array.from(htmlText.matchAll(/<script[^>]*>(.*?)<\/script>/gs)).map(
+            (m) => m[1]
+          );
+          for (const raw of allScripts) {
+            if (!raw.includes("video_url") && !raw.includes("playable_url")) continue;
+            const m = raw.match(/"(?:video_url|playable_url)"\s*:\s*"(https?:[^"]+)"/);
+            if (m && m[1]) {
+              videoUrl = m[1].replace(/\\\//g, "/").replace(/\\u0026/g, "&").replace(/%3D/g, "=");
+              break;
+            }
           }
         }
+
+        // 3. Raw regex over HTML
+        if (!videoUrl) {
+          const m = htmlText.match(/"video_url"\s*:\s*"(https?:[^"]+)"/);
+          if (m && m[1]) {
+            videoUrl = m[1].replace(/\\\//g, "/").replace(/\\u0026/g, "&");
+          }
+        }
+
+        // 4. Look for direct CDN .mp4 links
+        if (!videoUrl) {
+          const mp4Matches = Array.from(
+            htmlText.matchAll(/https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*/g)
+          ).map((m) => m[0]);
+          for (const u of mp4Matches) {
+            const clean = u.replace(/\\\//g, "/").replace(/\\u0026/g, "&");
+            if (clean.includes("cdninstagram") || clean.includes("fbcdn")) {
+              videoUrl = clean;
+              break;
+            }
+          }
+        }
+
+        const ogImg = htmlText.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
+        if (ogImg && ogImg[1]) {
+          imageUrl = ogImg[1].replace(/&amp;/g, "&");
+        }
       }
-    } catch {}
+    } catch (e) {
+      console.warn(`[IG Scraper] fetchPost direct scrape exception:`, e);
+    }
+
+    // Strategy 2: Embed Endpoint Fallback
+    if (!videoUrl) {
+      try {
+        const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`;
+        const resp = await fetch(embedUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+            Accept: "text/html,*/*",
+            Referer: "https://www.instagram.com/",
+          },
+          signal: AbortSignal.timeout(8000),
+        });
+
+        if (resp.ok) {
+          const body = await resp.text();
+          const found = deepFindVideoUrl(body);
+          if (found) videoUrl = found;
+          if (!videoUrl) {
+            const m = body.match(/(?:VideoURL|video_url|playable_url|src)[":,\s]+([^"<\s]+\.mp4[^"<\s]*)/i);
+            if (m && m[1]) {
+              videoUrl = m[1].replace(/\\\//g, "/").replace(/&amp;/g, "&");
+            }
+          }
+        }
+      } catch {}
+    }
   }
 
   if (!videoUrl) {
@@ -944,11 +1043,16 @@ export async function fetchPostDetails(
       ? buildProxyUrl(videoUrl, origin)
       : videoUrl;
 
+  const proxiedImage =
+    imageUrl && (imageUrl.includes("cdninstagram.com") || imageUrl.includes("fbcdn.net"))
+      ? buildProxyUrl(imageUrl, origin)
+      : imageUrl;
+
   return new Response(
     JSON.stringify({
       playable_video_url: proxiedVideo,
       raw_video_url: videoUrl,
-      image_url: "",
+      image_url: proxiedImage,
     }),
     {
       status: 200,

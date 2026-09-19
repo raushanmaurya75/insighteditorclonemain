@@ -101,9 +101,10 @@ export const DEFAULT_PROFILE: ProfileData = {
     {
       id: "mq_post_1",
       shortcode: "mq_clock_post",
-      is_video: false,
-      display_url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
-      thumbnail_src: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
+      is_video: true,
+      display_url: reelMachine,
+      thumbnail_src: reelMachine,
+      video_url: reelVideo1,
       likes: 54200,
       comments: 480,
       views: 320000,
@@ -113,9 +114,10 @@ export const DEFAULT_PROFILE: ProfileData = {
     {
       id: "mq_post_2",
       shortcode: "mq_discipline_post",
-      is_video: false,
-      display_url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop&q=80",
-      thumbnail_src: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop&q=80",
+      is_video: true,
+      display_url: reelCasino,
+      thumbnail_src: reelCasino,
+      video_url: reelVideo2,
       likes: 89400,
       comments: 620,
       views: 580000,
@@ -125,9 +127,10 @@ export const DEFAULT_PROFILE: ProfileData = {
     {
       id: "mq_post_3",
       shortcode: "mq_focus_post",
-      is_video: false,
-      display_url: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&auto=format&fit=crop&q=80",
-      thumbnail_src: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&auto=format&fit=crop&q=80",
+      is_video: true,
+      display_url: reelRoad,
+      thumbnail_src: reelRoad,
+      video_url: reelVideo3,
       likes: 124000,
       comments: 980,
       views: 890000,
@@ -137,36 +140,39 @@ export const DEFAULT_PROFILE: ProfileData = {
     {
       id: "mq_post_4",
       shortcode: "mq_silence_post",
-      is_video: false,
+      is_video: true,
       display_url: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800&auto=format&fit=crop&q=80",
       thumbnail_src: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800&auto=format&fit=crop&q=80",
+      video_url: reelVideo1,
       likes: 67800,
       comments: 412,
-      views: 0,
+      views: 410000,
       caption: "Silent progress is better than loud promises. Build in silence and let your work make the noise. 🤫🏛️\n\n#dedication #resilience #grind #hustle",
       timestamp: 1786390800,
     },
     {
       id: "mq_post_5",
       shortcode: "mq_decision_post",
-      is_video: false,
+      is_video: true,
       display_url: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80",
       thumbnail_src: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80",
+      video_url: reelVideo2,
       likes: 91500,
       comments: 534,
-      views: 0,
+      views: 520000,
       caption: "You are always one courageous decision away from a completely different life. Step forward today. 🌟💫\n\n#courage #newbeginnings #inspiration",
       timestamp: 1786304400,
     },
     {
       id: "mq_post_6",
       shortcode: "mq_energy_post",
-      is_video: false,
+      is_video: true,
       display_url: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&auto=format&fit=crop&q=80",
       thumbnail_src: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&auto=format&fit=crop&q=80",
+      video_url: reelVideo3,
       likes: 78200,
       comments: 389,
-      views: 0,
+      views: 610000,
       caption: "Energy is currency. Spend it wisely on people and habits that elevate your mind. 🎯🔋\n\n#mindsetquotes #lifelessons #clarity",
       timestamp: 1786218000,
     },
@@ -590,7 +596,7 @@ export function mapScrapedUserToProfile(user: ScrapedInstagramUser): ProfileData
         is_video: Boolean(node.is_video),
         display_url: node.display_url || node.thumbnail_src || profilePhoto,
         thumbnail_src: node.thumbnail_src || node.display_url || profilePhoto,
-        video_url: node.video_url || "",
+        video_url: node.video_url || (node.is_video ? (idx % 3 === 0 ? reelVideo1 : idx % 3 === 1 ? reelVideo2 : reelVideo3) : ""),
         likes,
         comments,
         views,
@@ -1046,10 +1052,11 @@ export function getFamousCelebrityPosts(): HomeFeedPost[] {
   const famousUsers = ["cristiano", "virat.kohli", "selenagomez", "natgeo"];
   const posts: HomeFeedPost[] = [];
 
-  famousUsers.forEach((u) => {
+  famousUsers.forEach((u, idx) => {
     const scraped = generateRealisticScrapedUser(u);
     const post = scraped.edge_owner_to_timeline_media?.edges?.[0]?.node;
     if (post) {
+      const vidFallback = idx % 3 === 0 ? reelVideo1 : idx % 3 === 1 ? reelVideo2 : reelVideo3;
       posts.push({
         id: `famous_${u}_${post.id}`,
         user: scraped.username,
@@ -1065,8 +1072,8 @@ export function getFamousCelebrityPosts(): HomeFeedPost[] {
         caption: post.edge_media_to_caption?.edges?.[0]?.node?.text || post.caption?.text || post.caption || "",
         isVerified: scraped.is_verified,
         isSuggested: true,
-        is_video: Boolean(post.is_video),
-        video_url: post.video_url,
+        is_video: post.is_video !== undefined ? post.is_video : true,
+        video_url: post.video_url || vidFallback,
         shortcode: post.shortcode,
       });
     }
@@ -1385,4 +1392,103 @@ export function useHomeStories(): {
     addStory: addCustomStoryAccount,
     removeStory: removeCustomStoryAccount,
   };
+}
+
+export const HOME_FEED_PERSIST_KEY = "ig_home_feed_persistent_v1";
+
+export function loadCachedFeed(): HomeFeedPost[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(HOME_FEED_PERSIST_KEY) || sessionStorage.getItem(HOME_FEED_PERSIST_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+export function saveCachedFeed(posts: HomeFeedPost[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(HOME_FEED_PERSIST_KEY, JSON.stringify(posts));
+    sessionStorage.setItem(HOME_FEED_PERSIST_KEY, JSON.stringify(posts));
+  } catch {}
+}
+
+export async function preloadAllHomeFeedData(): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  // 1. Preload Grand Hotel font to eliminate FOUT
+  try {
+    if ((document as any).fonts) {
+      await (document as any).fonts.load('32px "Grand Hotel"');
+    }
+  } catch {}
+
+  // 2. Fetch live data for stories, profile, and suggested posts during splash
+  try {
+    const currentStories = memoryStories && memoryStories.length > 0 ? memoryStories : loadSavedStories();
+    const storyUsernames = currentStories.map((s) => s.username).filter(Boolean);
+    const [sugRes, storyRes] = await Promise.allSettled([
+      fetchAllFreshSuggestedPosts(),
+      storyUsernames.length > 0
+        ? Promise.allSettled(storyUsernames.map((u) => fetchLiveUserData(u)))
+        : Promise.resolve([]),
+    ]);
+
+    let freshSug: HomeFeedPost[] = getAllSuggestedPosts();
+    if (sugRes.status === "fulfilled" && sugRes.value && sugRes.value.length > 0) {
+      freshSug = sugRes.value;
+    }
+
+    const nextMap = new Map<string, HomeFeedPost[]>();
+    if (storyRes.status === "fulfilled" && Array.isArray(storyRes.value)) {
+      const validResults: any[] = [];
+      storyRes.value.forEach((r: any) => {
+        if (r.status === "fulfilled" && r.value) {
+          validResults.push(r.value);
+          if (r.value.posts && r.value.posts.length > 0) {
+            nextMap.set(r.value.username, r.value.posts);
+          }
+        }
+      });
+
+      if (validResults.length > 0) {
+        updateStoriesWithLiveAvatars(validResults);
+      }
+    }
+
+    const currentProfile = memoryProfile || loadSavedProfile();
+    const storyPosts: HomeFeedPost[] = [];
+    const storyUserSet = new Set(currentStories.map((s) => s.username.toLowerCase()));
+    const currentLower = (currentProfile.username || "").toLowerCase();
+
+    currentStories.forEach((s) => {
+      const livePosts = nextMap.get(s.username);
+      const postList = livePosts && livePosts.length > 0 ? livePosts : s.posts;
+      (postList || []).forEach((p) => {
+        if (p.user.toLowerCase() !== currentLower) {
+          storyPosts.push({ ...p, isSuggested: false });
+        }
+      });
+    });
+
+    const suggested: HomeFeedPost[] = (freshSug || [])
+      .filter(
+        (p) =>
+          Boolean(p) &&
+          !storyUserSet.has(p.user.toLowerCase()) &&
+          p.user.toLowerCase() !== currentLower
+      )
+      .map((p) => ({ ...p, isSuggested: true }));
+
+    const combined = [...storyPosts, ...suggested];
+    if (combined.length > 0) {
+      const shuffled = [...combined].sort(() => 0.5 - Math.random());
+      saveCachedFeed(shuffled);
+    }
+  } catch (e) {
+    console.warn("Preload home feed warning:", e);
+  }
 }

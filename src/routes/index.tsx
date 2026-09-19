@@ -1,13 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Heart,
   X,
   Trash2,
   CheckCircle2,
-  Volume2,
-  VolumeX,
-  Play,
 } from "lucide-react";
 import {
   IgHeart,
@@ -38,10 +35,11 @@ import {
   fetchLiveUserPosts,
   fetchLiveUserData,
   updateStoriesWithLiveAvatars,
+  loadCachedFeed,
+  saveCachedFeed,
   type HomeFeedPost,
   type HomeStoryAccount,
 } from "@/lib/profile-store";
-import { isRuntimeSecurityValid, crashAppSecurityPanic } from "@/lib/access-code-service";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -85,7 +83,6 @@ function DynamicPostCard({ post }: PostItemProps) {
   const [bookmarked, setBookmarked] = useState(false);
   const [reposted, setReposted] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
   const [showHeartPop, setShowHeartPop] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -118,8 +115,6 @@ function DynamicPostCard({ post }: PostItemProps) {
       setLikeOffset((c) => c + 1);
     }
   };
-
-  const isVideo = Boolean(post.is_video || (post.video_url && post.video_url.length > 0));
 
   const baseLikes = parseNumericCount(post.likes, 12800);
   const baseComments = parseNumericCount(post.comments, Math.max(12, Math.round(baseLikes * 0.008)));
@@ -198,29 +193,16 @@ function DynamicPostCard({ post }: PostItemProps) {
         className="relative w-full aspect-[4/5] bg-black overflow-hidden select-none cursor-pointer flex items-center justify-center"
         onDoubleClick={handleDoubleTap}
       >
-        {isVideo && post.video_url ? (
-          <video
-            src={post.video_url}
-            poster={post.img}
-            className="w-full h-full object-cover"
-            autoPlay
-            loop
-            muted={isMuted}
-            playsInline
-            webkit-playsinline="true"
-          />
-        ) : (
-          <img
-            src={post.img}
-            alt={post.caption || "Feed post"}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src =
-                "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
-            }}
-          />
-        )}
+        <img
+          src={post.img}
+          alt={post.caption || "Feed post"}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src =
+              "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
+          }}
+        />
 
         {/* Double Tap Heart Pop */}
         {showHeartPop && (
@@ -229,21 +211,6 @@ function DynamicPostCard({ post }: PostItemProps) {
               <Heart size={96} fill="#ef4444" color="#ef4444" />
             </div>
           </div>
-        )}
-
-        {/* Mute button if video */}
-        {isVideo && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsMuted(!isMuted);
-            }}
-            className="absolute bottom-3 right-3 z-20 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/20 hover:scale-105 transition-transform"
-            aria-label={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-          </button>
         )}
       </div>
 
@@ -386,15 +353,6 @@ function DynamicPostCard({ post }: PostItemProps) {
   );
 }
 
-function checkIsSplashNeeded(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    return !sessionStorage.getItem("ig_splash_completed_v3");
-  } catch {
-    return false;
-  }
-}
-
 function shuffleFeedPosts(posts: HomeFeedPost[]): HomeFeedPost[] {
   if (posts.length <= 1) return posts;
   const pool = [...posts];
@@ -446,85 +404,9 @@ function shuffleFeedPosts(posts: HomeFeedPost[]): HomeFeedPost[] {
   return result;
 }
 
-const HOME_FEED_PERSIST_KEY = "ig_home_feed_persistent_v1";
-
-function loadCachedFeed(): HomeFeedPost[] | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(HOME_FEED_PERSIST_KEY) || localStorage.getItem(HOME_FEED_PERSIST_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
-  return null;
-}
-
-function saveCachedFeed(posts: HomeFeedPost[]) {
-  if (typeof window === "undefined") return;
-  try {
-    sessionStorage.setItem(HOME_FEED_PERSIST_KEY, JSON.stringify(posts));
-    localStorage.setItem(HOME_FEED_PERSIST_KEY, JSON.stringify(posts));
-  } catch {}
-}
-
-function buildHomeFeedFromSources(
-  storyAccounts: HomeStoryAccount[],
-  liveMap: Map<string, HomeFeedPost[]>,
-  suggestedPool: HomeFeedPost[],
-  currentUsername: string
-): HomeFeedPost[] {
-  const storyPosts: HomeFeedPost[] = [];
-  const storyUserSet = new Set(storyAccounts.map((s) => s.username.toLowerCase()));
-  const currentLower = (currentUsername || "").toLowerCase();
-
-  // 1. Story accounts posts (marked isSuggested: false)
-  storyAccounts.forEach((s) => {
-    const livePosts = liveMap.get(s.username);
-    const postList = livePosts && livePosts.length > 0 ? livePosts : s.posts;
-    (postList || []).forEach((p) => {
-      // Cloned profile posts are NEVER shown in home feed
-      if (p.user.toLowerCase() !== currentLower) {
-        storyPosts.push({
-          ...p,
-          isSuggested: false,
-        });
-      }
-    });
-  });
-
-  // 2. Suggested posts (only accounts not in stories & not the cloned user profile)
-  const suggested: HomeFeedPost[] = (suggestedPool || [])
-    .filter(
-      (p) =>
-        Boolean(p) &&
-        !storyUserSet.has(p.user.toLowerCase()) &&
-        p.user.toLowerCase() !== currentLower
-    )
-    .map((p) => ({
-      ...p,
-      isSuggested: true,
-    }));
-
-  // Note: user's cloned profile posts are NEVER added to home feed
-  const combined = [...storyPosts, ...suggested];
-  if (combined.length === 0) return [];
-  return shuffleFeedPosts(combined);
-}
-
 function HomeFeedPage() {
-  const { profile, cloneProfile } = useProfile();
+  const { profile } = useProfile();
   const { stories } = useHomeStories();
-
-  // Hard anti-bypass check: if unauthorized, panic & lockdown
-  useEffect(() => {
-    if (!isRuntimeSecurityValid()) {
-      crashAppSecurityPanic("Unauthorized access attempt to Home Feed");
-    }
-  }, []);
-
-  const [isSplashActive, setIsSplashActive] = useState<boolean>(false);
-  const [isSplashFading, setIsSplashFading] = useState(false);
 
   const [isManageStoriesOpen, setIsManageStoriesOpen] = useState(false);
   const [storyInput, setStoryInput] = useState("");
@@ -532,119 +414,18 @@ function HomeFeedPage() {
   const [storyError, setStoryError] = useState<string | null>(null);
   const [activeStoryViewer, setActiveStoryViewer] = useState<HomeStoryAccount | null>(null);
 
-  // Initial feed state: loaded from cache or initialized on splash screen once
+  // Initial feed state: populated during splash screen preloading or cached pool
   const [feedPosts, setFeedPosts] = useState<HomeFeedPost[]>(() => {
     const cached = loadCachedFeed();
     if (cached && cached.length > 0) return cached;
-    return [];
+    return getAllSuggestedPosts();
   });
 
-  // Cold-start splash screen: Pre-builds 100% of the feed & story avatars before revealing Home
-  useEffect(() => {
-    let active = true;
-
-    const needsSplash = checkIsSplashNeeded();
-
-    if (needsSplash) {
-      setIsSplashActive(true);
-
-      const minSplashDelay = new Promise((resolve) => setTimeout(resolve, 1500));
-      const profilePromise = profile.username
-        ? (cloneProfile || cloneInstagramProfile)(profile.username)
-        : Promise.resolve({ success: true });
-      const suggestedPromise = fetchAllFreshSuggestedPosts();
-      const storyUsernames = stories.map((s) => s.username).filter(Boolean);
-      const storyPromise =
-        storyUsernames.length > 0
-          ? Promise.allSettled(storyUsernames.map((u) => fetchLiveUserData(u)))
-          : Promise.resolve([]);
-
-      // Preload everything simultaneously while splash is showing (User Profile + Suggested Feed + Stories)
-      Promise.allSettled([profilePromise, suggestedPromise, storyPromise, minSplashDelay]).then(
-        ([_profRes, sugRes, storyRes]) => {
-          if (!active) return;
-
-          let freshSug: HomeFeedPost[] = getAllSuggestedPosts();
-          if (sugRes.status === "fulfilled" && sugRes.value && sugRes.value.length > 0) {
-            freshSug = sugRes.value;
-          }
-
-          const nextMap = new Map<string, HomeFeedPost[]>();
-          if (storyRes.status === "fulfilled" && Array.isArray(storyRes.value)) {
-            const validResults: any[] = [];
-            storyRes.value.forEach((r: any) => {
-              if (r.status === "fulfilled" && r.value) {
-                validResults.push(r.value);
-                if (r.value.posts && r.value.posts.length > 0) {
-                  nextMap.set(r.value.username, r.value.posts);
-                }
-              }
-            });
-
-            if (validResults.length > 0) {
-              updateStoriesWithLiveAvatars(validResults);
-            }
-          }
-
-          // Build and randomize the home feed ONCE right here on splash screen
-          const newGeneratedFeed = buildHomeFeedFromSources(
-            stories,
-            nextMap,
-            freshSug,
-            profile.username
-          );
-
-          saveCachedFeed(newGeneratedFeed);
-          setFeedPosts(newGeneratedFeed);
-
-          try {
-            sessionStorage.setItem("ig_splash_completed_v3", "1");
-          } catch {}
-
-          // Feed & Avatars are 100% created — smoothly fade out splash screen!
-          setIsSplashFading(true);
-          setTimeout(() => {
-            if (active) setIsSplashActive(false);
-          }, 400);
-        }
-      );
-
-      // Failsafe timeout (3.8s max)
-      const failsafe = setTimeout(() => {
-        if (active) {
-          try {
-            sessionStorage.setItem("ig_splash_completed_v3", "1");
-          } catch {}
-          setIsSplashFading(true);
-          setTimeout(() => {
-            if (active) setIsSplashActive(false);
-          }, 400);
-        }
-      }, 3800);
-
-      return () => {
-        active = false;
-        clearTimeout(failsafe);
-      };
-    } else {
-      // Subsequent visits in session: Splash is skipped and feed is ALREADY created!
-      setIsSplashActive(false);
-
-      const cached = loadCachedFeed();
-      if (!cached || cached.length === 0) {
-        const fallbackFeed = buildHomeFeedFromSources(
-          stories,
-          new Map(),
-          getAllSuggestedPosts(),
-          profile.username
-        );
-        saveCachedFeed(fallbackFeed);
-        setFeedPosts(fallbackFeed);
-      } else {
-        setFeedPosts(cached);
-      }
+  const scrollToTop = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, []);
+  };
 
   const handleAddStory = async (usernameToAdd?: string) => {
     const target = usernameToAdd || storyInput;
@@ -720,7 +501,6 @@ function HomeFeedPage() {
     });
   };
 
-
   const isStoriesFull = stories.length >= 10;
 
   return (
@@ -738,10 +518,10 @@ function HomeFeedPage() {
             <IgPlus size={26} />
           </button>
 
-          <div className="feed-brand-wrap">
+          <div className="feed-brand-wrap" onClick={scrollToTop}>
             <span className="feed-brand-title">Instagram</span>
             <span className="feed-brand-chevron" aria-hidden="true">
-              <IgChevronDown size={14} />
+              <IgChevronDown size={14} strokeWidth={2.5} />
             </span>
           </div>
 
@@ -1071,31 +851,6 @@ function HomeFeedPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* =========================================================================
-          INSTAGRAM NATIVE SPLASH SCREEN OVERLAY
-          ========================================================================= */}
-      {isSplashActive && (
-        <aside
-          className={`ig-splash-screen ${isSplashFading ? "is-fading" : ""}`}
-          aria-label="Instagram Splash"
-        >
-          <div className="ig-splash-center">
-            <div className="ig-splash-glyph-wrap">
-              <IgInstagramGlyph size={76} />
-            </div>
-          </div>
-
-          <footer className="ig-splash-footer">
-            <span className="ig-splash-from-text">from</span>
-            <img
-              src="/images/meta_logo.png"
-              alt="Meta"
-              className="ig-splash-meta-img"
-            />
-          </footer>
-        </aside>
       )}
     </main>
   );

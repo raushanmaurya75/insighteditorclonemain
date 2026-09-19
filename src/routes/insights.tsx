@@ -88,12 +88,6 @@ function Legend() {
 }
 
 function InsightsPage() {
-  useEffect(() => {
-    if (!isRuntimeSecurityValid()) {
-      crashAppSecurityPanic("Unauthorized access attempt to Insights");
-    }
-  }, []);
-
   return (
     <main className="min-h-screen bg-page text-ink">
       <div className="phone-shell pb-24">

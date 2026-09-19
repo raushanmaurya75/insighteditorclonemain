@@ -69,12 +69,6 @@ function ProfilePage() {
   const navigate = useNavigate();
   const { profile, selectPost, resetProfile, cloneProfile } = useProfile();
 
-  useEffect(() => {
-    if (!isRuntimeSecurityValid()) {
-      crashAppSecurityPanic("Unauthorized access attempt to Profile");
-    }
-  }, []);
-
   const [activeTab, setActiveTab] = useState<"grid" | "reels" | "reposts" | "tagged">("grid");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);

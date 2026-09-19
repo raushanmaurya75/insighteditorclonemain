@@ -1301,12 +1301,6 @@ function AudienceTab({
 }
 
 function InsightViewPage() {
-  useEffect(() => {
-    if (!isRuntimeSecurityValid()) {
-      crashAppSecurityPanic("Unauthorized access attempt to Reel Insights");
-    }
-  }, []);
-
   const [tab, setTab] = useState<Tab>("overview");
   const [isEditMode, setIsEditMode] = useState(false);
   const [isFullModalOpen, setIsFullModalOpen] = useState(false);

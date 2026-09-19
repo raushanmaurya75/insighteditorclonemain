@@ -215,13 +215,6 @@ export async function performSecurityHeartbeatCheck(): Promise<{
     return { isValid: false, reason: "No access code found. Session terminated." };
   }
 
-  // Check memory tamper token
-  const token = sessionStorage.getItem(SECURITY_TOKEN_STORAGE_KEY);
-  if (!token || token !== RUNTIME_SECURITY_SIGNATURE) {
-    clearSavedAccessCode();
-    return { isValid: false, reason: "Security integrity violation detected." };
-  }
-
   const deviceId = getPersistentDeviceId();
   try {
     const docRef = doc(db, ACCESS_CODES_COLLECTION, code);
@@ -258,8 +251,8 @@ export async function performSecurityHeartbeatCheck(): Promise<{
 
     return { isValid: true };
   } catch {
-    // If transient offline, check local token validity
-    return { isValid: Boolean(token && token === RUNTIME_SECURITY_SIGNATURE) };
+    // If transient offline, keep session active
+    return { isValid: true };
   }
 }
 
@@ -292,14 +285,15 @@ export function crashAppSecurityPanic(reason: string = "Security tamper detected
 export function isRuntimeSecurityValid(): boolean {
   if (typeof window === "undefined") return true;
   const code = getSavedAccessCode();
-  const token = sessionStorage.getItem(SECURITY_TOKEN_STORAGE_KEY);
-  return Boolean(code && token === RUNTIME_SECURITY_SIGNATURE);
+  return Boolean(code && code.trim().length > 0);
 }
 
 export function saveLocalAccessCode(code: string) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(SAVED_CODE_STORAGE_KEY, code.trim().toUpperCase());
+    const clean = code.trim().toUpperCase();
+    localStorage.setItem(SAVED_CODE_STORAGE_KEY, clean);
+    localStorage.setItem(SECURITY_TOKEN_STORAGE_KEY, RUNTIME_SECURITY_SIGNATURE);
     sessionStorage.setItem(SECURITY_TOKEN_STORAGE_KEY, RUNTIME_SECURITY_SIGNATURE);
   } catch {}
 }
@@ -317,6 +311,7 @@ export function clearSavedAccessCode() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(SAVED_CODE_STORAGE_KEY);
+    localStorage.removeItem(SECURITY_TOKEN_STORAGE_KEY);
     sessionStorage.removeItem(SECURITY_TOKEN_STORAGE_KEY);
   } catch {}
 }

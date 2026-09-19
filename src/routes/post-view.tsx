@@ -1,12 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  ChevronLeft,
-  Volume2,
-  VolumeX,
-  Play,
-  Heart,
-} from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, Heart } from "lucide-react";
 import {
   IgHeart,
   IgComment,
@@ -24,7 +18,6 @@ import {
   setSelectedPostIndex,
   type ProfilePost,
 } from "@/lib/profile-store";
-import { isRuntimeSecurityValid, crashAppSecurityPanic } from "@/lib/access-code-service";
 
 export const Route = createFileRoute("/post-view")({
   head: () => ({
@@ -65,92 +58,7 @@ function PostCardItem({
   const [bookmarked, setBookmarked] = useState(false);
   const [reposted, setReposted] = useState(false);
   const [showHeartPop, setShowHeartPop] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
-  const [videoError, setVideoError] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
-
-  const initialVideo = (post.video_url || "").trim();
-  const [videoSrc, setVideoSrc] = useState<string>(initialVideo);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  const isRealShortcode =
-    post.shortcode &&
-    !post.shortcode.startsWith("post_") &&
-    !post.shortcode.startsWith("sc_") &&
-    post.shortcode.length >= 5;
-
-  // Fetch live video URL if shortcode exists and video is not set
-  useEffect(() => {
-    let active = true;
-    if (post.video_url && post.video_url.trim().length > 0) {
-      setVideoSrc(post.video_url);
-      setVideoError(false);
-      return;
-    }
-
-    if (isRealShortcode) {
-      const url = `https://www.instagram.com/p/${post.shortcode}/`;
-      fetch(`/api/fetch-post?url=${encodeURIComponent(url)}`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (active && data?.playable_video_url) {
-            setVideoSrc(data.playable_video_url);
-            setVideoError(false);
-          }
-        })
-        .catch(() => {});
-    }
-
-    return () => {
-      active = false;
-    };
-  }, [post.shortcode, post.video_url, isRealShortcode]);
-
-  // Ref callback to initialize and auto-play video safely
-  const attachVideo = useCallback(
-    (el: HTMLVideoElement | null) => {
-      videoRef.current = el;
-      if (el) {
-        el.muted = isMuted;
-        el.defaultMuted = true;
-        el.setAttribute("playsinline", "true");
-        el.setAttribute("webkit-playsinline", "true");
-        const p = el.play();
-        if (p !== undefined) {
-          p.then(() => setIsPlaying(true)).catch(() => {
-            el.muted = true;
-            el.play().catch(() => {});
-          });
-        }
-      }
-    },
-    [isMuted]
-  );
-
-  const handleVideoError = () => {
-    setVideoError(true);
-  };
-
-  const togglePlayPause = () => {
-    if (!videoRef.current) return;
-    if (videoRef.current.paused) {
-      videoRef.current.play().catch(() => {});
-      setIsPlaying(true);
-    } else {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    if (videoRef.current) {
-      videoRef.current.muted = nextMuted;
-    }
-  };
 
   const handleDoubleTap = () => {
     if (!liked) {
@@ -175,12 +83,6 @@ function PostCardItem({
   const likesDisplay = formatCompactNumber(post.likes + likeCountOffset);
   const commentsDisplay = formatCompactNumber(post.comments);
   const viewsDisplay = formatCompactNumber(post.views || post.likes * 10 || 1200);
-
-  const hasDirectVideo = Boolean(
-    videoSrc &&
-      !videoError &&
-      (videoSrc.includes(".mp4") || videoSrc.includes("blob:") || videoSrc.startsWith("/assets/"))
-  );
 
   const captionText = (post.caption || "").trim();
   const shouldTruncate = captionText.length > 32 || captionText.includes("\n");
@@ -221,61 +123,21 @@ function PostCardItem({
         </button>
       </header>
 
-      {/* 2. Media Player / Reel Video (with Aspect Ratio 4:5) */}
+      {/* 2. Media Image (with Aspect Ratio 4:5) */}
       <div
         className="post-view-media-wrap"
-        onClick={togglePlayPause}
         onDoubleClick={handleDoubleTap}
       >
-        {hasDirectVideo ? (
-          <>
-            <video
-              ref={attachVideo}
-              src={videoSrc}
-              poster={displayImage}
-              autoPlay
-              loop
-              muted={isMuted}
-              playsInline
-              webkit-playsinline="true"
-              preload="auto"
-              onError={handleVideoError}
-            />
-
-            {/* Tap Play indicator if paused */}
-            {!isPlaying && (
-              <div className="post-view-play-badge">
-                <Play size={28} fill="#ffffff" />
-              </div>
-            )}
-
-            {/* Mute toggle button */}
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="post-view-mute-btn"
-              aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-              title={isMuted ? "Unmute" : "Mute"}
-            >
-              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-            </button>
-          </>
-        ) : (
-          <>
-            <img
-              src={displayImage}
-              alt={captionText || author}
-              className="w-full h-full object-cover select-none"
-              loading="lazy"
-            />
-            {/* Play indicator badge on photo reels */}
-            {post.is_video && !isPlaying && (
-              <div className="post-view-play-badge">
-                <Play size={28} fill="#ffffff" />
-              </div>
-            )}
-          </>
-        )}
+        <img
+          src={displayImage}
+          alt={captionText || author}
+          className="w-full h-full object-cover select-none"
+          loading="lazy"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src =
+              "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60";
+          }}
+        />
 
         {/* Double-tap animated heart pop */}
         {showHeartPop && (
@@ -398,12 +260,6 @@ function PostCardItem({
 function PostViewPage() {
   const navigate = useNavigate();
   const { profile } = useProfile();
-
-  useEffect(() => {
-    if (!isRuntimeSecurityValid()) {
-      crashAppSecurityPanic("Unauthorized access attempt to Post View");
-    }
-  }, []);
 
   const postsList = profile.posts.length > 0 ? profile.posts : [];
   const selectedIdx =

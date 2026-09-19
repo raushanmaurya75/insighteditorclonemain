@@ -252,12 +252,22 @@ class NativeScraperHandler {
                           final displayUrl = (node['display_uri'] ?? node['display_url'] ?? '').toString();
                           final caption = node['caption'] is Map ? (node['caption']['text'] ?? '').toString() : '';
 
+                          final videoUrl = (node['video_url'] ??
+                              (node['video_versions'] is List &&
+                                      (node['video_versions'] as List).isNotEmpty
+                                  ? node['video_versions'][0]['url']
+                                  : null) ??
+                              node['playable_url'] ??
+                              '')
+                              .toString();
+
                           posts.add({
                             'id': (node['id'] ?? node['pk'] ?? 'p_${posts.length + 1}').toString(),
                             'shortcode': sc,
                             'is_video': isVid,
                             'display_url': displayUrl,
                             'thumbnail_src': displayUrl,
+                            'video_url': videoUrl.isNotEmpty ? videoUrl : null,
                             'edge_media_preview_like': {'count': node['like_count'] ?? (followerCount > 0 ? (followerCount * 0.04).round() : 1200)},
                             'edge_media_to_comment': {'count': node['comment_count'] ?? (followerCount > 0 ? (followerCount * 0.003).round() : 45)},
                             'video_view_count': node['view_count'] ?? (followerCount > 0 ? (followerCount * 0.25).round() : 15000),
@@ -400,6 +410,80 @@ class NativeScraperHandler {
     };
   }
 
+  static Future<Map<String, dynamic>> fetchPostDetails(String postUrl) async {
+    final cleanUrl = Uri.decodeFull(postUrl).trim();
+    if (cleanUrl.isEmpty || !cleanUrl.startsWith('http')) {
+      return {'error': 'Missing or invalid post URL'};
+    }
+
+    final scMatch = RegExp(r'/(?:p|reel|tv)/([A-Za-z0-9_-]+)').firstMatch(cleanUrl);
+    final shortcode = scMatch != null ? scMatch.group(1) ?? '' : '';
+    final isRealShortcode = shortcode.isNotEmpty && !shortcode.startsWith('post_') && !shortcode.startsWith('sc_');
+    String videoUrl = '';
+    String imageUrl = '';
+
+    if (isRealShortcode) {
+      try {
+        final req = await _client.getUrl(Uri.parse('https://www.instagram.com/p/$shortcode/'));
+        _desktopHeaders.forEach((k, v) => req.headers.set(k, v));
+        final res = await req.close();
+        if (res.statusCode == 200) {
+          final html = await utf8.decodeStream(res);
+          final m1 = RegExp(r'''"(?:video_url|playable_url)"\s*:\s*"(https?:[^"]+)"''').firstMatch(html);
+          if (m1 != null) {
+            videoUrl = m1.group(1)!.replaceAll(r'\/', '/').replaceAll(r'\u0026', '&').replaceAll('%3D', '=');
+          }
+          if (videoUrl.isEmpty) {
+            final mp4Match = RegExp(r'''https?://[^\s"'<>]+\.mp4[^\s"'<>]*''').allMatches(html);
+            for (final m in mp4Match) {
+              final clean = m.group(0)!.replaceAll(r'\/', '/').replaceAll(r'\u0026', '&');
+              if (clean.contains('cdninstagram') || clean.contains('fbcdn')) {
+                videoUrl = clean;
+                break;
+              }
+            }
+          }
+          final ogImg = RegExp(r'''<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']''', caseSensitive: false).firstMatch(html);
+          if (ogImg != null) {
+            imageUrl = ogImg.group(1)!.replaceAll('&amp;', '&');
+          }
+        }
+      } catch (e) {
+        debugPrint('[NativeScraper] fetchPostDetails exception: $e');
+      }
+
+      if (videoUrl.isEmpty) {
+        try {
+          final req = await _client.getUrl(Uri.parse('https://www.instagram.com/p/$shortcode/embed/captioned/'));
+          req.headers.set('User-Agent', 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36');
+          req.headers.set('Referer', 'https://www.instagram.com/');
+          final res = await req.close();
+          if (res.statusCode == 200) {
+            final body = await utf8.decodeStream(res);
+            final m = RegExp(r'''(?:VideoURL|video_url|playable_url|src)[":,\s]+([^"<\s]+\.mp4[^"<\s]*)''', caseSensitive: false).firstMatch(body);
+            if (m != null) {
+              videoUrl = m.group(1)!.replaceAll(r'\/', '/').replaceAll('&amp;', '&');
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    final proxiedVideo = videoUrl.isNotEmpty && (videoUrl.contains('cdninstagram.com') || videoUrl.contains('fbcdn.net'))
+        ? 'http://localhost:8080/api/ig-image-proxy?url=${Uri.encodeComponent(videoUrl)}'
+        : videoUrl;
+
+    final proxiedImage = imageUrl.isNotEmpty && (imageUrl.contains('cdninstagram.com') || imageUrl.contains('fbcdn.net'))
+        ? 'http://localhost:8080/api/ig-image-proxy?url=${Uri.encodeComponent(imageUrl)}'
+        : imageUrl;
+
+    return {
+      'playable_video_url': proxiedVideo,
+      'raw_video_url': videoUrl,
+      'image_url': proxiedImage,
+    };
+  }
+
   static WebResourceResponse _jsonResponse(Map<String, dynamic> data, {int statusCode = 200}) {
     final bytes = Uint8List.fromList(utf8.encode(jsonEncode(data)));
     return WebResourceResponse(
@@ -456,6 +540,13 @@ class NativeScraperHandler {
           debugPrint('Dart Media Proxy Note: $e');
         }
       }
+    }
+
+    // 3. Post Details Endpoint (Fetches live reel video stream)
+    if (path == '/api/fetch-post') {
+      final postUrl = uri.queryParameters['url'] ?? '';
+      final result = await fetchPostDetails(postUrl);
+      return _jsonResponse(result);
     }
 
     return null;
