@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Completely disable splash icon on Android 12+ in night mode too -->
+    <!-- Completely disable Android 12+ splash screen and window preview in night mode -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:forceDarkAllowed">false</item>
-        <item name="android:windowSplashScreenBackground">#FFFFFF</item>
+        <item name="android:windowSplashScreenBackground">@android:color/transparent</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_transparent</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
     </style>
+    <!-- Theme applied to the Android Window as soon as the process has started -->
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowDisablePreview">true</item>
         <item name="android:windowBackground">@android:color/white</item>
         <item name="android:forceDarkAllowed">false</item>
     </style>
