@@ -1416,17 +1416,29 @@ export function saveCachedFeed(posts: HomeFeedPost[]) {
   } catch {}
 }
 
+export function ensureInitialHomeFeedReady(): void {
+  if (typeof window === "undefined") return;
+  const cached = loadCachedFeed();
+  if (!cached || cached.length === 0) {
+    const defaultFeed = getAllSuggestedPosts();
+    saveCachedFeed(defaultFeed);
+  }
+}
+
 export async function preloadAllHomeFeedData(): Promise<void> {
   if (typeof window === "undefined") return;
 
-  // 1. Preload Grand Hotel font to eliminate FOUT
+  // 1. Ensure initial feed is populated instantly (0ms synchronous)
+  ensureInitialHomeFeedReady();
+
+  // 2. Preload font asynchronously
   try {
     if ((document as any).fonts) {
-      await (document as any).fonts.load('32px "Grand Hotel"');
+      (document as any).fonts.load('32px "Grand Hotel"');
     }
   } catch {}
 
-  // 2. Fetch live data for stories, profile, and suggested posts during splash
+  // 3. Background live refresh (non-blocking)
   try {
     const currentStories = memoryStories && memoryStories.length > 0 ? memoryStories : loadSavedStories();
     const storyUsernames = currentStories.map((s) => s.username).filter(Boolean);

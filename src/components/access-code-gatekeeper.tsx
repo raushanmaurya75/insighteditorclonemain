@@ -12,7 +12,9 @@ import {
   checkSavedSessionLive,
   performSecurityHeartbeatCheck,
   getSavedAccessCode,
+  getSavedAccessCodeSync,
   clearSavedAccessCode,
+  initializeRaspGuards,
   TELEGRAM_SUPPORT_URL,
   type AccessCodeVerificationResult,
 } from "@/lib/access-code-service";
@@ -41,34 +43,40 @@ function checkShouldShowInitialSplash(): boolean {
 export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
   const [isInitialSplash, setIsInitialSplash] = useState(() => checkShouldShowInitialSplash());
   const [isSplashFading, setIsSplashFading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getSavedAccessCode()));
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getSavedAccessCodeSync()));
   const [accessCodeInput, setAccessCodeInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 1. Initial Splash Screen + Live Auth Validation + Feed Preloading on App Start
+  // 1. Initialize RASP guards immediately on mount
+  useEffect(() => {
+    try { initializeRaspGuards(); } catch {}
+  }, []);
+
+  // 2. Initial Splash Screen + Live Auth Validation + Feed Preloading on App Start
   useEffect(() => {
     let mounted = true;
 
     async function handleAppLaunch() {
       const shouldSplash = !hasGlobalSplashCompleted;
-      const minSplashTime = shouldSplash ? new Promise((r) => setTimeout(r, 1800)) : Promise.resolve();
-      const authPromise = checkSavedSessionLive();
-      const preloadPromise = preloadAllHomeFeedData();
+      const saved = await getSavedAccessCode();
 
-      const [_, authResult] = await Promise.all([minSplashTime, authPromise, preloadPromise]);
+      // Start feed preloading immediately (synchronously sets up cache)
+      preloadAllHomeFeedData();
 
-      if (!mounted) return;
-
-      if (authResult.isValid) {
+      if (saved) {
         setIsAuthenticated(true);
       } else {
         setIsAuthenticated(false);
-        const saved = getSavedAccessCode();
-        if (saved && authResult.message) {
-          setErrorMessage(authResult.message);
-        }
       }
+
+      // Snappy Instagram splash duration (700ms)
+      const minSplashTime = shouldSplash ? new Promise((r) => setTimeout(r, 700)) : Promise.resolve();
+      const authPromise = saved ? checkSavedSessionLive() : Promise.resolve({ isValid: false, message: "" });
+
+      await minSplashTime;
+
+      if (!mounted) return;
 
       hasGlobalSplashCompleted = true;
       try {
@@ -76,16 +84,32 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
       } catch {}
 
       if (shouldSplash) {
-        // Smooth fade out of splash screen
         setIsSplashFading(true);
         setTimeout(() => {
           if (mounted) {
             setIsInitialSplash(false);
           }
-        }, 350);
+        }, 250);
       } else {
         setIsInitialSplash(false);
       }
+
+      // Process background auth result without delaying initial render
+      authPromise.then((authResult) => {
+        if (!mounted) return;
+        if (saved) {
+          if (authResult.isValid) {
+            setIsAuthenticated(true);
+          } else if (
+            authResult.message &&
+            !authResult.message.includes("connection") &&
+            !authResult.message.includes("network")
+          ) {
+            setIsAuthenticated(false);
+            setErrorMessage(authResult.message);
+          }
+        }
+      });
     }
 
     handleAppLaunch();
@@ -95,7 +119,8 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
     };
   }, []);
 
-  // 2. Real-Time Background Security Heartbeat (checks every 12 seconds)
+  // 3. Real-Time Background Security Heartbeat (checks every 12 seconds)
+  // Combines Firestore validation + RASP runtime integrity check
   useEffect(() => {
     if (!isAuthenticated || isInitialSplash) return;
 

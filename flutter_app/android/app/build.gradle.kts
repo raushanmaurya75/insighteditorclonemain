@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.rupesh.insighteditor.insight_editor"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36  // freeRASP requires Android SDK 36+
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -20,21 +20,34 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.rupesh.insighteditor.insight_editor"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23  // freeRASP requires minSdk 23+ (Android 6.0)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    // ════════════════════════════════════════════════════════════
+    // LAYER 4: R8 Full-Mode Obfuscation & Minification
+    // ════════════════════════════════════════════════════════════
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Signing with debug keys for now; replace with release keystore before Play Store
             signingConfig = signingConfigs.getByName("debug")
+
+            // Enable R8 shrinking, obfuscation, and resource shrinking
+            isMinifyEnabled = true
+            isShrinkResources = true
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
+            // Keep debug build clean and unobfuscated for development
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
