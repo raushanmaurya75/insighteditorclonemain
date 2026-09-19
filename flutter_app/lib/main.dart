@@ -624,7 +624,6 @@ class WebViewScreen extends StatefulWidget {
 
 class _WebViewScreenState extends State<WebViewScreen> {
   InAppWebViewController? _webViewController;
-  PullToRefreshController? _pullToRefreshController;
   bool _hasError = false;
   String _errorMessage = '';
   DateTime? _lastBackPressTime;
@@ -662,24 +661,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
       mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
       transparentBackground: false,
     );
-
-    final isMobile = !kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.android ||
-            defaultTargetPlatform == TargetPlatform.iOS);
-
-    if (isMobile) {
-      _pullToRefreshController = PullToRefreshController(
-        settings: PullToRefreshSettings(
-          color: const Color(0xFFE1306C),
-          backgroundColor: Colors.white,
-        ),
-        onRefresh: () async {
-          if (_webViewController != null) {
-            _webViewController!.reload();
-          }
-        },
-      );
-    }
   }
 
   void _retryLoading() {
@@ -742,7 +723,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
               InAppWebView(
                 initialUrlRequest: URLRequest(url: WebUri(AppConfig.initialUrl)),
                 initialSettings: _settings,
-                pullToRefreshController: _pullToRefreshController,
                 onWebViewCreated: (controller) {
                   _webViewController = controller;
 
@@ -770,11 +750,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     _hasError = false;
                   });
                 },
-                onLoadStop: (controller, url) async {
-                  _pullToRefreshController?.endRefreshing();
-                },
+                onLoadStop: (controller, url) async {},
                 onReceivedError: (controller, request, error) {
-                  _pullToRefreshController?.endRefreshing();
                   if (request.isForMainFrame ?? true) {
                     setState(() {
                       _hasError = true;
@@ -782,11 +759,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     });
                   }
                 },
-                onProgressChanged: (controller, progress) {
-                  if (progress == 100) {
-                    _pullToRefreshController?.endRefreshing();
-                  }
-                },
+                onProgressChanged: (controller, progress) {},
                 onConsoleMessage: (controller, consoleMessage) {
                   debugPrint('[JS Console] ${consoleMessage.messageLevel}: ${consoleMessage.message}');
                 },

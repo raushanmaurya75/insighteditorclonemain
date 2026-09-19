@@ -445,6 +445,72 @@ function shuffleFeedPosts(posts: HomeFeedPost[]): HomeFeedPost[] {
   return result;
 }
 
+const HOME_FEED_PERSIST_KEY = "ig_home_feed_persistent_v1";
+
+function loadCachedFeed(): HomeFeedPost[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(HOME_FEED_PERSIST_KEY) || localStorage.getItem(HOME_FEED_PERSIST_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+function saveCachedFeed(posts: HomeFeedPost[]) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(HOME_FEED_PERSIST_KEY, JSON.stringify(posts));
+    localStorage.setItem(HOME_FEED_PERSIST_KEY, JSON.stringify(posts));
+  } catch {}
+}
+
+function buildHomeFeedFromSources(
+  storyAccounts: HomeStoryAccount[],
+  liveMap: Map<string, HomeFeedPost[]>,
+  suggestedPool: HomeFeedPost[],
+  currentUsername: string
+): HomeFeedPost[] {
+  const storyPosts: HomeFeedPost[] = [];
+  const storyUserSet = new Set(storyAccounts.map((s) => s.username.toLowerCase()));
+  const currentLower = (currentUsername || "").toLowerCase();
+
+  // 1. Story accounts posts (marked isSuggested: false)
+  storyAccounts.forEach((s) => {
+    const livePosts = liveMap.get(s.username);
+    const postList = livePosts && livePosts.length > 0 ? livePosts : s.posts;
+    (postList || []).forEach((p) => {
+      // Cloned profile posts are NEVER shown in home feed
+      if (p.user.toLowerCase() !== currentLower) {
+        storyPosts.push({
+          ...p,
+          isSuggested: false,
+        });
+      }
+    });
+  });
+
+  // 2. Suggested posts (only accounts not in stories & not the cloned user profile)
+  const suggested: HomeFeedPost[] = (suggestedPool || [])
+    .filter(
+      (p) =>
+        Boolean(p) &&
+        !storyUserSet.has(p.user.toLowerCase()) &&
+        p.user.toLowerCase() !== currentLower
+    )
+    .map((p) => ({
+      ...p,
+      isSuggested: true,
+    }));
+
+  // Note: user's cloned profile posts are NEVER added to home feed
+  const combined = [...storyPosts, ...suggested];
+  if (combined.length === 0) return [];
+  return shuffleFeedPosts(combined);
+}
+
 function HomeFeedPage() {
   const { profile, cloneProfile } = useProfile();
   const { stories } = useHomeStories();
@@ -458,8 +524,12 @@ function HomeFeedPage() {
   const [storyError, setStoryError] = useState<string | null>(null);
   const [activeStoryViewer, setActiveStoryViewer] = useState<HomeStoryAccount | null>(null);
 
-  const [freshSuggestedPosts, setFreshSuggestedPosts] = useState<HomeFeedPost[]>(() => getAllSuggestedPosts());
-  const [liveStoriesPosts, setLiveStoriesPosts] = useState<Map<string, HomeFeedPost[]>>(new Map());
+  // Initial feed state: loaded from cache or initialized on splash screen once
+  const [feedPosts, setFeedPosts] = useState<HomeFeedPost[]>(() => {
+    const cached = loadCachedFeed();
+    if (cached && cached.length > 0) return cached;
+    return [];
+  });
 
   // Cold-start splash screen: Pre-builds 100% of the feed & story avatars before revealing Home
   useEffect(() => {
@@ -486,16 +556,14 @@ function HomeFeedPage() {
         ([_profRes, sugRes, storyRes]) => {
           if (!active) return;
 
-          // 1. Forward fresh live scraped posts to Home feed
+          let freshSug: HomeFeedPost[] = getAllSuggestedPosts();
           if (sugRes.status === "fulfilled" && sugRes.value && sugRes.value.length > 0) {
-            setFreshSuggestedPosts(sugRes.value);
+            freshSug = sugRes.value;
           }
 
-          // 2. Forward fresh story profile pictures & story posts
+          const nextMap = new Map<string, HomeFeedPost[]>();
           if (storyRes.status === "fulfilled" && Array.isArray(storyRes.value)) {
             const validResults: any[] = [];
-            const nextMap = new Map<string, HomeFeedPost[]>();
-
             storyRes.value.forEach((r: any) => {
               if (r.status === "fulfilled" && r.value) {
                 validResults.push(r.value);
@@ -508,16 +576,24 @@ function HomeFeedPage() {
             if (validResults.length > 0) {
               updateStoriesWithLiveAvatars(validResults);
             }
-            if (nextMap.size > 0) {
-              setLiveStoriesPosts(nextMap);
-            }
           }
+
+          // Build and randomize the home feed ONCE right here on splash screen
+          const newGeneratedFeed = buildHomeFeedFromSources(
+            stories,
+            nextMap,
+            freshSug,
+            profile.username
+          );
+
+          saveCachedFeed(newGeneratedFeed);
+          setFeedPosts(newGeneratedFeed);
 
           try {
             sessionStorage.setItem("ig_splash_completed_v3", "1");
           } catch {}
 
-          // 3. Feed, Profile data, Bottom Nav avatar, and Story Avatars are 100% updated in state — smoothly fade out splash screen!
+          // Feed & Avatars are 100% created — smoothly fade out splash screen!
           setIsSplashFading(true);
           setTimeout(() => {
             if (active) setIsSplashActive(false);
@@ -543,44 +619,24 @@ function HomeFeedPage() {
         clearTimeout(failsafe);
       };
     } else {
-      // Subsequent visits in session: feed displays immediately
+      // Subsequent visits in session: Splash is skipped and feed is ALREADY created!
       setIsSplashActive(false);
-      fetchAllFreshSuggestedPosts().then((posts) => {
-        if (active && posts && posts.length > 0) {
-          setFreshSuggestedPosts(posts);
-        }
-      });
 
-      const storyUsernames = stories.map((s) => s.username).filter(Boolean);
-      if (storyUsernames.length > 0) {
-        Promise.allSettled(storyUsernames.map((u) => fetchLiveUserData(u))).then((res) => {
-          if (!active) return;
-          const validResults: any[] = [];
-          const nextMap = new Map<string, HomeFeedPost[]>();
-
-          res.forEach((r) => {
-            if (r.status === "fulfilled" && r.value) {
-              validResults.push(r.value);
-              if (r.value.posts && r.value.posts.length > 0) {
-                nextMap.set(r.value.username, r.value.posts);
-              }
-            }
-          });
-
-          if (validResults.length > 0) {
-            updateStoriesWithLiveAvatars(validResults);
-          }
-          if (nextMap.size > 0) {
-            setLiveStoriesPosts(nextMap);
-          }
-        });
+      const cached = loadCachedFeed();
+      if (!cached || cached.length === 0) {
+        const fallbackFeed = buildHomeFeedFromSources(
+          stories,
+          new Map(),
+          getAllSuggestedPosts(),
+          profile.username
+        );
+        saveCachedFeed(fallbackFeed);
+        setFeedPosts(fallbackFeed);
+      } else {
+        setFeedPosts(cached);
       }
-
-      return () => {
-        active = false;
-      };
     }
-  }, [stories.length]);
+  }, []);
 
   const handleAddStory = async (usernameToAdd?: string) => {
     const target = usernameToAdd || storyInput;
@@ -617,63 +673,44 @@ function HomeFeedPage() {
 
     if (addedCount > 0) {
       setStoryInput("");
+      const validStoryUsernames = rawList.map((u) => u.toLowerCase());
+      Promise.allSettled(validStoryUsernames.map((u) => fetchLiveUserData(u))).then((results) => {
+        const newPosts: HomeFeedPost[] = [];
+        results.forEach((r) => {
+          if (r.status === "fulfilled" && r.value && r.value.posts) {
+            r.value.posts.forEach((p: HomeFeedPost) => {
+              if (p.user.toLowerCase() !== profile.username.toLowerCase()) {
+                newPosts.push({ ...p, isSuggested: false });
+              }
+            });
+          }
+        });
+        if (newPosts.length > 0) {
+          setFeedPosts((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const freshFiltered = newPosts.filter((p) => !existingIds.has(p.id));
+            const updated = [...freshFiltered, ...prev];
+            saveCachedFeed(updated);
+            return updated;
+          });
+        }
+      });
     }
     if (lastError && addedCount === 0) {
       setStoryError(lastError);
     }
   };
 
-  // Helper to build a truly randomized, non-serial home feed
-  const combinedFeed = useMemo<HomeFeedPost[]>(() => {
-    // 1. User's own cloned profile posts
-    const userProfilePosts: HomeFeedPost[] = (profile.posts || []).map((p, idx) => ({
-      id: `user_p_${p.id || idx}`,
-      user: profile.username,
-      avatar: profile.avatarUrl,
-      sub: idx % 2 === 0 ? "♫ Original Audio" : "City Highlights",
-      img: p.display_url || p.thumbnail_src || profile.avatarUrl,
-      count: "1/1",
-      tag1: `#${profile.username}`,
-      tag2: "#moments",
-      time: "2 hours ago",
-      likes: formatCompactNumber(p.likes || 850),
-      comments: formatCompactNumber(p.comments || 32),
-      caption: p.caption || "",
-      isVerified: profile.isVerified,
-      is_video: p.is_video,
-      video_url: p.video_url,
-      shortcode: p.shortcode,
-      isSuggested: false,
-    }));
-
-    // 2. Story accounts posts (marked isSuggested: false)
-    const storyPosts: HomeFeedPost[] = [];
-    const storyUserSet = new Set(stories.map((s) => s.username.toLowerCase()));
-
-    stories.forEach((s) => {
-      const livePosts = liveStoriesPosts.get(s.username);
-      const postList = livePosts && livePosts.length > 0 ? livePosts : s.posts;
-      (postList || []).forEach((p) => {
-        storyPosts.push({
-          ...p,
-          isSuggested: false,
-        });
-      });
+  const handleRemoveStory = (username: string) => {
+    removeCustomStoryAccount(username);
+    setFeedPosts((prev) => {
+      const updated = prev.filter(
+        (p) => p.user.toLowerCase() !== username.toLowerCase()
+      );
+      saveCachedFeed(updated);
+      return updated;
     });
-
-    // 3. Suggested posts - only from accounts that are NOT in stories and NOT the current user
-    const suggestedPool: HomeFeedPost[] = freshSuggestedPosts
-      .filter((p) => Boolean(p) && !storyUserSet.has(p.user.toLowerCase()) && p.user.toLowerCase() !== profile.username.toLowerCase())
-      .map((p) => ({
-        ...p,
-        isSuggested: true,
-      }));
-
-    const allFeedPosts = [...userProfilePosts, ...storyPosts, ...suggestedPool];
-    if (allFeedPosts.length === 0) return [];
-
-    return shuffleFeedPosts(allFeedPosts);
-  }, [profile, stories, freshSuggestedPosts, liveStoriesPosts]);
+  };
 
 
   const isStoriesFull = stories.length >= 10;
@@ -770,7 +807,7 @@ function HomeFeedPage() {
 
         {/* Dynamic Feed Posts List */}
         <section aria-label="Feed posts">
-          {combinedFeed.map((post) => (
+          {feedPosts.map((post) => (
             <DynamicPostCard key={post.id} post={post} />
           ))}
         </section>
@@ -914,7 +951,7 @@ function HomeFeedPage() {
 
                       <button
                         type="button"
-                        onClick={() => removeCustomStoryAccount(acc.username)}
+                        onClick={() => handleRemoveStory(acc.username)}
                         className="p-1.5 text-subtle hover:text-red-500 hover:bg-red-50 rounded bg-transparent border-none cursor-pointer transition-colors"
                         title="Remove story account"
                       >

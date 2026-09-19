@@ -56,6 +56,9 @@ body {
   margin: 0;
   background: var(--page);
   color: var(--ink);
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
   font-family:
     system-ui,
     -apple-system,
