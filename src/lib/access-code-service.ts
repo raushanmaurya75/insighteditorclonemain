@@ -26,6 +26,7 @@ const db = getFirestore(firebaseApp);
 export const ACCESS_CODES_COLLECTION = "cloner_access_codes";
 const SAVED_CODE_STORAGE_KEY = "ig_cloner_access_code_v2";
 const DEVICE_ID_STORAGE_KEY = "ig_cloner_device_id_v2";
+const RUNTIME_SECURITY_SIGNATURE = "IG_SECURITY_INTEGRITY_SALT_2026_ACTIVE";
 
 export interface AccessCodeVerificationResult {
   isValid: boolean;
@@ -198,10 +199,65 @@ export async function checkSavedSessionLive(): Promise<AccessCodeVerificationRes
   return verifyAndBindAccessCode(savedCode);
 }
 
+/**
+ * Periodic Security Heartbeat Validator (runs every 10-15 seconds in background).
+ * Checks if code was expired, blocked, reset, or bypassed.
+ */
+export async function performSecurityHeartbeatCheck(): Promise<{
+  isValid: boolean;
+  reason?: string;
+}> {
+  const code = getSavedAccessCode();
+  if (!code) {
+    return { isValid: false, reason: "No access code found." };
+  }
+
+  const deviceId = getPersistentDeviceId();
+  try {
+    const docRef = doc(db, ACCESS_CODES_COLLECTION, code);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      clearSavedAccessCode();
+      return { isValid: false, reason: "Access code no longer exists." };
+    }
+
+    const data = docSnap.data() || {};
+    if (data.isActive === false) {
+      clearSavedAccessCode();
+      return { isValid: false, reason: "Access code deactivated by admin." };
+    }
+
+    let expiryDate: Date | undefined;
+    const rawExpiry = data.expiryDate;
+    if (rawExpiry instanceof Timestamp) {
+      expiryDate = rawExpiry.toDate();
+    } else if (rawExpiry) {
+      expiryDate = new Date(rawExpiry);
+    }
+
+    if (expiryDate && expiryDate.getTime() < Date.now()) {
+      clearSavedAccessCode();
+      return { isValid: false, reason: "Access code has expired." };
+    }
+
+    if (data.deviceId && data.deviceId !== deviceId) {
+      clearSavedAccessCode();
+      return { isValid: false, reason: "Access code bound to another device." };
+    }
+
+    return { isValid: true };
+  } catch {
+    // If transient offline, allow session to continue until reconnect
+    return { isValid: true };
+  }
+}
+
 export function saveLocalAccessCode(code: string) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(SAVED_CODE_STORAGE_KEY, code.trim().toUpperCase());
+    sessionStorage.setItem("ig_sec_token", RUNTIME_SECURITY_SIGNATURE);
   } catch {}
 }
 
@@ -218,5 +274,6 @@ export function clearSavedAccessCode() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(SAVED_CODE_STORAGE_KEY);
+    sessionStorage.removeItem("ig_sec_token");
   } catch {}
 }

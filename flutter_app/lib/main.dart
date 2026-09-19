@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // In-App Localhost Server to serve bundled React assets offline inside APK
 final InAppLocalhostServer localhostServer = InAppLocalhostServer(
@@ -734,6 +735,25 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       return await NativeScraperHandler.scrapeProfile(username);
                     },
                   );
+                },
+                shouldOverrideUrlLoading: (controller, navigationAction) async {
+                  final uri = navigationAction.request.url;
+                  if (uri != null) {
+                    final host = uri.host.toLowerCase();
+                    final scheme = uri.scheme.toLowerCase();
+                    if (host.contains('t.me') || host.contains('telegram.org') || scheme == 'tg') {
+                      try {
+                        final rawUri = Uri.parse(uri.toString());
+                        if (await canLaunchUrl(rawUri)) {
+                          await launchUrl(rawUri, mode: LaunchMode.externalApplication);
+                          return NavigationActionPolicy.CANCEL;
+                        }
+                      } catch (e) {
+                        debugPrint('Telegram link launch error: $e');
+                      }
+                    }
+                  }
+                  return NavigationActionPolicy.ALLOW;
                 },
                 shouldInterceptRequest: (controller, request) async {
                   final uri = request.url;

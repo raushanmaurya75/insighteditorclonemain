@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   KeyRound,
   Shield,
@@ -6,12 +6,13 @@ import {
   AlertCircle,
   X,
   Camera,
-  CheckCircle2,
 } from "lucide-react";
 import {
   verifyAndBindAccessCode,
   checkSavedSessionLive,
+  performSecurityHeartbeatCheck,
   getSavedAccessCode,
+  clearSavedAccessCode,
   type AccessCodeVerificationResult,
 } from "@/lib/access-code-service";
 
@@ -26,7 +27,7 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Check saved session live on mount
+  // 1. Check saved session on mount
   useEffect(() => {
     let mounted = true;
 
@@ -57,6 +58,29 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
     };
   }, []);
 
+  // 2. Real-Time Background Security Heartbeat (checks every 12 seconds)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const check = await performSecurityHeartbeatCheck();
+        if (!check.isValid) {
+          // Security violation or expiry/revocation detected in background!
+          clearSavedAccessCode();
+          setIsAuthenticated(false);
+          setErrorMessage(check.reason || "Access license revoked or expired.");
+        }
+      } catch (e) {
+        console.warn("Security check cycle:", e);
+      }
+    }, 12000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated]);
+
   const handleVerify = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const code = accessCodeInput.trim().toUpperCase();
@@ -80,7 +104,14 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
   };
 
   const handleContactTelegram = () => {
-    window.open("https://t.me/instaji", "_blank", "noopener,noreferrer");
+    try {
+      const targetUrl = "https://t.me/instaji";
+      if (typeof window !== "undefined") {
+        window.location.href = targetUrl;
+      }
+    } catch {
+      window.open("https://t.me/instaji", "_blank", "noopener,noreferrer");
+    }
   };
 
   // 1. Initial Checking Loading Screen
@@ -171,14 +202,19 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
             </button>
 
             {/* Contact Support Telegram Button */}
-            <button
-              type="button"
-              onClick={handleContactTelegram}
-              className="w-full py-3 rounded-xl bg-[#f0f9ff] text-[#0095f6] border border-[#bae6fd] font-semibold text-xs cursor-pointer hover:bg-[#e0f2fe] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            <a
+              href="https://t.me/instaji"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.preventDefault();
+                handleContactTelegram();
+              }}
+              className="w-full py-3 rounded-xl bg-[#f0f9ff] text-[#0095f6] border border-[#bae6fd] font-semibold text-xs cursor-pointer hover:bg-[#e0f2fe] active:scale-[0.99] transition-all flex items-center justify-center gap-2 no-underline"
             >
               <Send size={15} />
               <span>Contact Us for Access Code</span>
-            </button>
+            </a>
           </form>
 
           {/* Single-Device Protection Info Card */}
@@ -191,7 +227,6 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
             </div>
             <ul className="text-[11.5px] text-[#6b7280] space-y-1 list-disc pl-4 leading-relaxed">
               <li>Each Access Code is locked to 1 device upon activation.</li>
-              <li>Verification is performed live via Firebase security servers.</li>
               <li>Contact administrator if your code expires or needs a device reset.</li>
             </ul>
           </div>
@@ -200,6 +235,6 @@ export function AccessCodeGatekeeper({ children }: AccessCodeGatekeeperProps) {
     );
   }
 
-  // 3. Authenticated: Render App Contents
+  // 3. Authenticated: Render Protected Application
   return <>{children}</>;
 }
