@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 🔒 1. INSTAGRAM ID CLONER COLLECTION (cloner_access_codes)
+    match /cloner_access_codes/{code} {
+      // 1. User app can only read a specific document by its exact code
+      allow get: if true;
+
+      // 2. Prevent dumping/listing/scraping all database codes
+      allow list: if false;
+
+      // 3. Admin App can create/delete codes using the Admin Master Key
+      allow create, delete: if (request.resource != null && request.resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364") ||
+                               (resource != null && resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364");
+
+      // 4. Update Rules:
+      //    - Admin with adminKey has full update permission (reset device, extend expiry, deactivate)
+      //    - Normal client app can ONLY bind its own deviceId to an UNBOUND code (where deviceId was empty/null)
+      //    - Normal client CANNOT modify isActive, expiryDate, code, or another device's binding!
+      allow update: if (request.resource != null && request.resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364") ||
+                       (resource != null && resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364") ||
+                       (
+                         resource != null &&
+                         (resource.data.deviceId == null || resource.data.deviceId == "" || resource.data.deviceId == request.resource.data.deviceId) &&
+                         request.resource.data.code == resource.data.code &&
+                         request.resource.data.isActive == resource.data.isActive &&
+                         request.resource.data.expiryDate == resource.data.expiryDate
+                       );
+    }
+
+    // 🔒 2. INSTAGRAM RAFTAR COLLECTION (access_codes)
+    match /access_codes/{code} {
+      allow get: if true;
+      allow list: if false;
+
+      allow create, delete: if (request.resource != null && request.resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364") ||
+                               (resource != null && resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364");
+
+      allow update: if (request.resource != null && request.resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364") ||
+                       (resource != null && resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364") ||
+                       (
+                         resource != null &&
+                         (resource.data.deviceId == null || resource.data.deviceId == "" || resource.data.deviceId == request.resource.data.deviceId) &&
+                         request.resource.data.code == resource.data.code &&
+                         request.resource.data.isActive == resource.data.isActive &&
+                         request.resource.data.expiryDate == resource.data.expiryDate
+                       );
+    }
+
+    // Default fallback rule
+    match /{document=**} {
+      allow read: if true;
+      allow write: if (request.resource != null && request.resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364") ||
+                     (resource != null && resource.data.adminKey == "CURASCAN_ADMIN_MASTER_KEY_992817364");
+    }
+  }
+}

@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AccessCodeGatekeeper } from "@/components/access-code-gatekeeper";
 
 function NotFoundComponent() {
   const router = useRouter();
@@ -143,8 +144,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      {/* Required: nested routes render here. Protected by single-device Access Code Gatekeeper. */}
+      <AccessCodeGatekeeper>
+        <Outlet />
+      </AccessCodeGatekeeper>
     </QueryClientProvider>
   );
 }

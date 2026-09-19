@@ -587,16 +587,16 @@ void main() async {
     ),
   );
 
-  runApp(const InsightEditorApp());
+  runApp(const InstagramApp());
 }
 
-class InsightEditorApp extends StatelessWidget {
-  const InsightEditorApp({super.key});
+class InstagramApp extends StatelessWidget {
+  const InstagramApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Insight Editor',
+      title: 'Instagram',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.light,
       theme: ThemeData(
