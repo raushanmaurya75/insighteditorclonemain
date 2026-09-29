@@ -51,21 +51,24 @@ export function FloatingBottomNav({ className }: FloatingBottomNavProps) {
       </Link>
       <Link
         to="/profile"
-        className={`mini-profile ${isProfile ? "current" : ""}`}
+        className={`bottom-nav-profile-link ${isProfile ? "current" : ""}`}
         aria-label="Profile"
         title="Profile"
       >
-        <img
-          src={avatarSrc}
-          alt={profile.fullName || "Profile"}
-          width={512}
-          height={512}
-          className="object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = defaultProfilePhoto;
-          }}
-        />
+        <span className={`bottom-nav-avatar-wrap ${isProfile ? "current" : ""}`}>
+          <img
+            src={avatarSrc}
+            alt={profile.fullName || "Profile"}
+            width={24}
+            height={24}
+            className="bottom-nav-avatar-img"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = defaultProfilePhoto;
+            }}
+          />
+        </span>
       </Link>
     </nav>
   );
 }
+

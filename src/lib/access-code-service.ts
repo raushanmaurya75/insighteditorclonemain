@@ -448,9 +448,13 @@ export async function verifyAndBindAccessCode(
     // 4. Save encrypted
     await saveLocalAccessCode(cleanCode);
 
+    // 5. Enforce Hardware & Web Screen Protection if code starts with TRIAL
+    await enforceTrialScreenSecurity(cleanCode);
+
     return { isValid: true, message: "Access granted!", expiryDate, clientName };
   } catch (error: any) {
     clearSavedAccessCode();
+    await enforceTrialScreenSecurity(null);
     return {
       isValid: false,
       message: error?.message
@@ -463,8 +467,10 @@ export async function verifyAndBindAccessCode(
 export async function checkSavedSessionLive(): Promise<AccessCodeVerificationResult> {
   const savedCode = await getSavedAccessCode();
   if (!savedCode) {
+    await enforceTrialScreenSecurity(null);
     return { isValid: false, message: "No access code entered." };
   }
+  await enforceTrialScreenSecurity(savedCode);
   return verifyAndBindAccessCode(savedCode);
 }
 
@@ -611,5 +617,89 @@ export function clearSavedAccessCode() {
     localStorage.removeItem(SECURITY_TOKEN_STORAGE_KEY);
     localStorage.removeItem(ENCRYPTED_KEY_STORAGE_KEY);
     sessionStorage.removeItem(SECURITY_TOKEN_STORAGE_KEY);
+    enforceTrialScreenSecurity(null);
   } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// Trial Mode Screen Protection & Anti-Recording System
+// ═══════════════════════════════════════════════════════════
+
+export function isTrialAccessCode(code?: string | null): boolean {
+  if (!code) return false;
+  return code.trim().toUpperCase().startsWith("TRIAL");
+}
+
+export async function enforceTrialScreenSecurity(code?: string | null): Promise<void> {
+  if (typeof window === "undefined") return;
+  const isTrial = isTrialAccessCode(code);
+
+  // 1. Direct Bridge to InAppWebView JavaScript Handler
+  try {
+    if ((window as any).flutter_inappwebview?.callHandler) {
+      (window as any).flutter_inappwebview.callHandler("setScreenSecurity", isTrial);
+    }
+  } catch {}
+
+  // 2. Intercepted HTTP Request Bridge for mobile APK
+  try {
+    fetch(`/api/security/screen-protect?secure=${isTrial ? "1" : "0"}`).catch(() => {});
+  } catch {}
+
+  // 3. Web DOM & Visual Security Enforcement
+  try {
+    if (isTrial) {
+      document.body.classList.add("trial-screen-protected");
+
+      if (!(window as any).__trialSecurityInitialized) {
+        (window as any).__trialSecurityInitialized = true;
+
+        // Block PrintScreen / Screenshot shortcuts & wipe clipboard
+        window.addEventListener(
+          "keyup",
+          (e) => {
+            if (
+              e.key === "PrintScreen" ||
+              e.keyCode === 44 ||
+              (e.ctrlKey && e.shiftKey && e.key === "S")
+            ) {
+              try {
+                navigator.clipboard?.writeText("").catch(() => {});
+              } catch {}
+            }
+          },
+          true
+        );
+
+        // Blank out on app switch / overlay recorder / split-screen attempt
+        window.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            document.body.classList.add("trial-veil-active");
+          } else {
+            document.body.classList.remove("trial-veil-active");
+          }
+        });
+
+        window.addEventListener("blur", () => {
+          document.body.classList.add("trial-veil-active");
+        });
+
+        window.addEventListener("focus", () => {
+          document.body.classList.remove("trial-veil-active");
+        });
+      }
+    } else {
+      document.body.classList.remove("trial-screen-protected");
+      document.body.classList.remove("trial-veil-active");
+    }
+  } catch {}
+}
+
+// Initial eager check on startup
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    getSavedAccessCode().then((c) => {
+      if (c) enforceTrialScreenSecurity(c);
+    });
+  }, 100);
 }

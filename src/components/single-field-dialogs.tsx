@@ -641,3 +641,160 @@ export function YAxisEditDialog({
     </div>
   );
 }
+
+// ==========================================
+// 5. Country Edit / Add Dialog
+// ==========================================
+export interface CountryEditDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialName?: string;
+  initialPercentage?: number;
+  mode: "edit" | "add";
+  onSave: (name: string, percentage: number) => void;
+  onDelete?: () => void;
+}
+
+export function CountryEditDialog({
+  isOpen,
+  onClose,
+  initialName = "",
+  initialPercentage = 10,
+  mode,
+  onSave,
+  onDelete,
+}: CountryEditDialogProps) {
+  if (!isOpen) return null;
+
+  const [countryName, setCountryName] = useState(initialName);
+  const [percentage, setPercentage] = useState(initialPercentage);
+
+  useEffect(() => {
+    setCountryName(initialName);
+    setPercentage(initialPercentage);
+  }, [initialName, initialPercentage, isOpen]);
+
+  const handleConfirm = () => {
+    const trimmed = countryName.trim();
+    if (!trimmed) return;
+    onSave(trimmed, Math.max(0, Math.min(100, Number(percentage) || 0)));
+    onClose();
+  };
+
+  return (
+    <div
+      className="clone-modal-overlay select-none"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="clone-modal-dialog max-w-[360px] w-full bg-white text-[#262626] rounded-2xl p-5 shadow-2xl border border-[#dbdbdb] animate-fade-in"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-center justify-between mb-3 border-b border-[#ededed] pb-2.5">
+          <div>
+            <h3 className="text-sm font-bold text-[#111]">
+              {mode === "add" ? "Add Country" : "Edit Country"}
+            </h3>
+            <p className="text-[11px] text-[#737373] mt-0.5">
+              {mode === "add"
+                ? "Add a new country to audience metrics"
+                : "Update country name and viewer percentage"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-full text-[#737373] hover:text-[#111] bg-transparent border-none cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-3.5 text-xs">
+          <div>
+            <label className="block text-[11px] font-bold text-[#737373] mb-1">
+              Country Name
+            </label>
+            <input
+              type="text"
+              value={countryName}
+              onChange={(e) => setCountryName(e.target.value)}
+              placeholder="e.g. United States, India, Germany"
+              autoFocus
+              className="w-full bg-[#f9f9f9] text-[#111] border border-[#dbdbdb] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-[#bc1888] focus:bg-white"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-[#737373]">
+                Audience Percentage
+              </label>
+              <span className="text-xs font-bold text-[#bc1888]">
+                {percentage.toFixed(1)}%
+              </span>
+            </div>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={percentage}
+              onChange={(e) => setPercentage(parseFloat(e.target.value) || 0)}
+              className="w-full bg-[#f9f9f9] text-[#111] border border-[#dbdbdb] rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-[#bc1888] focus:bg-white mb-2"
+            />
+            <SmoothRateSlider
+              value={percentage}
+              min={0}
+              max={100}
+              step={0.1}
+              onChange={setPercentage}
+              unit="%"
+              presets={[1.0, 5.0, 10.0, 20.0, 30.0, 50.0]}
+              steppers={[-5, -1, -0.1, 0.1, 1, 5]}
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-[#ededed]">
+            {mode === "edit" && onDelete ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onDelete();
+                  onClose();
+                }}
+                className="px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 font-bold text-xs border-none cursor-pointer flex items-center gap-1 transition-colors"
+              >
+                <Trash2 size={14} />
+                <span>Delete</span>
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#262626] font-bold text-xs border-none cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={!countryName.trim()}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white font-bold text-xs border-none cursor-pointer hover:opacity-95 disabled:opacity-50 shadow-md shadow-pink-500/25"
+              >
+                {mode === "add" ? "Add Country" : "Save Country"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

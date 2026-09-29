@@ -2,10 +2,13 @@ import { useState, useRef } from "react";
 import {
   useProfile,
   DEFAULT_PROFILE,
+  formatPostDate,
   type ProfileData,
   type ProfilePost,
   type ProfileHighlight,
 } from "@/lib/profile-store";
+
+import { syncPostToInsights } from "@/lib/insight-store";
 import {
   IgClose,
   IgVerified,
@@ -60,11 +63,13 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
   const [postLikes, setPostLikes] = useState("1200");
   const [postViews, setPostViews] = useState("24000");
   const [postComments, setPostComments] = useState("45");
+  const [postTime, setPostTime] = useState("1 day ago");
   const [postThumbUrl, setPostThumbUrl] = useState("");
 
   const [isPhotoPickerOpen, setIsPhotoPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const postFileInputRef = useRef<HTMLInputElement>(null);
+
 
   if (!isOpen) return null;
 
@@ -193,6 +198,17 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
     };
 
     setProfile(updated);
+
+    // Sync all posts to insights store
+    updated.posts.forEach((p) => {
+      syncPostToInsights(p.id || p.shortcode, {
+        views: p.views,
+        likes: p.likes,
+        comments: p.comments,
+        thumbnailUrl: p.thumbnail_src || p.display_url,
+      });
+    });
+
     onClose();
   };
 
@@ -220,6 +236,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
     setPostLikes(p.likes.toString());
     setPostViews(p.views.toString());
     setPostComments(p.comments.toString());
+    setPostTime(formatPostDate(p));
     setPostThumbUrl(p.thumbnail_src || p.display_url || "");
   };
 
@@ -227,16 +244,33 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
   const handleSavePostEdit = () => {
     if (editingPostIndex === null) return;
     const updated = [...posts];
+    const newLikes = parseNum(postLikes, updated[editingPostIndex].likes);
+    const newViews = parseNum(postViews, updated[editingPostIndex].views);
+    const newComments = parseNum(postComments, updated[editingPostIndex].comments);
+    const newThumb = postThumbUrl || updated[editingPostIndex].thumbnail_src;
+
     updated[editingPostIndex] = {
       ...updated[editingPostIndex],
       caption: postCaption,
-      likes: parseNum(postLikes, updated[editingPostIndex].likes),
-      views: parseNum(postViews, updated[editingPostIndex].views),
-      comments: parseNum(postComments, updated[editingPostIndex].comments),
-      thumbnail_src: postThumbUrl || updated[editingPostIndex].thumbnail_src,
-      display_url: postThumbUrl || updated[editingPostIndex].display_url,
+      likes: newLikes,
+      views: newViews,
+      comments: newComments,
+      thumbnail_src: newThumb,
+      display_url: newThumb,
+      postTime: postTime.trim() || updated[editingPostIndex].postTime || "1 day ago",
     };
     setPosts(updated);
+
+    const editedPost = updated[editingPostIndex];
+    if (editedPost) {
+      syncPostToInsights(editedPost.id || editedPost.shortcode, {
+        views: newViews,
+        likes: newLikes,
+        comments: newComments,
+        thumbnailUrl: newThumb,
+      });
+    }
+
     setEditingPostIndex(null);
   };
 
@@ -253,6 +287,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
       comments: parseNum(postComments, 45),
       caption: postCaption.trim() || `New post by @${username}`,
       timestamp: Math.floor(Date.now() / 1000),
+      postTime: postTime.trim() || "1 day ago",
     };
     const updated = [newPost, ...posts];
     setPosts(updated);
@@ -260,7 +295,9 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
     setIsAddPostOpen(false);
     setPostCaption("");
     setPostThumbUrl("");
+    setPostTime("1 day ago");
   };
+
 
   return (
     <div
@@ -592,9 +629,18 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
                 </button>
               </div>
 
+              {/* Hidden file input for post image uploads (used by both Add and Inline Edit) */}
+              <input
+                type="file"
+                ref={postFileInputRef}
+                onChange={handlePostFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+
               {/* Add New Post Form */}
               {isAddPostOpen && (
-                <div className="p-3 bg-[#f8f9fa] rounded-xl border border-[#e5e5e5] space-y-2.5 text-xs">
+                <div className="p-3 bg-[#f8f9fa] rounded-xl border border-[#e5e5e5] space-y-2.5 text-xs animate-fade-in">
                   <p className="font-bold text-sm text-ink">New Post / Reel</p>
 
                   <div className="flex items-center gap-3">
@@ -627,13 +673,6 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
                       >
                         <IgImage size={15} className="text-[#0095f6]" /> {postThumbUrl ? "Change Image" : "Upload Image from Device"}
                       </button>
-                      <input
-                        type="file"
-                        ref={postFileInputRef}
-                        onChange={handlePostFileChange}
-                        accept="image/*"
-                        className="hidden"
-                      />
                     </div>
                   </div>
 
@@ -646,6 +685,32 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
                       placeholder="Post caption..."
                       className="w-full px-2.5 py-1.5 border border-[#dbdbdb] rounded-lg bg-white resize-none"
                     />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="block font-semibold text-subtle">Post Time (Instagram Age)</label>
+                      <span className="text-[10px] text-subtle">e.g. 1 hour ago, 2 Oct</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. 1 hour ago, 1 day ago, 2 Oct"
+                      value={postTime}
+                      onChange={(e) => setPostTime(e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-[#dbdbdb] rounded-lg bg-white text-xs"
+                    />
+                    <div className="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                      {["1 hour ago", "3 hours ago", "1 day ago", "2 days ago", "2 Oct", "28 September"].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setPostTime(preset)}
+                          className="px-2 py-0.5 rounded-full text-[10px] bg-gray-100 hover:bg-gray-200 border border-gray-200 text-ink cursor-pointer shrink-0 font-medium"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
@@ -697,135 +762,178 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
                 </div>
               )}
 
-              {/* Edit Post Modal */}
-              {editingPostIndex !== null && (
-                <div className="p-3 bg-[#f8f9fa] rounded-xl border border-[#0095f6] space-y-2.5 text-xs">
-                  <p className="font-bold text-sm text-[#0095f6]">Editing Post #{editingPostIndex + 1}</p>
+              {/* Posts List with Inline Editing at Exact Post Position */}
+              <div className="space-y-2.5">
+                {posts.map((post, idx) => {
+                  const isEditingThisPost = editingPostIndex === idx;
 
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={postThumbUrl || avatarUrl}
-                      alt="Preview"
-                      className="w-14 h-14 rounded-lg object-cover border border-[#dbdbdb]"
-                    />
-                    <div className="flex-1">
-                      <button
-                        type="button"
-                        onClick={() => postFileInputRef.current?.click()}
-                        className="w-full py-2 px-3 bg-white border border-[#dbdbdb] rounded-lg font-semibold text-ink hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                  if (isEditingThisPost) {
+                    return (
+                      <div
+                        key={post.id || `post_edit_${idx}`}
+                        className="p-3 bg-[#f8f9fa] rounded-xl border-2 border-[#0095f6] space-y-2.5 text-xs shadow-sm animate-fade-in"
                       >
-                        <IgImage size={15} className="text-[#0095f6]" /> Choose New Image from Device
-                      </button>
-                      <input
-                        type="file"
-                        ref={postFileInputRef}
-                        onChange={handlePostFileChange}
-                        accept="image/*"
-                        className="hidden"
-                      />
-                    </div>
-                  </div>
+                        <div className="flex items-center justify-between">
+                          <p className="font-bold text-sm text-[#0095f6]">Editing Post #{idx + 1}</p>
+                          <button
+                            type="button"
+                            onClick={() => setEditingPostIndex(null)}
+                            className="text-subtle hover:text-ink p-1 bg-transparent border-none cursor-pointer"
+                            title="Cancel editing"
+                          >
+                            <IgClose size={14} />
+                          </button>
+                        </div>
 
-                  <div>
-                    <label className="block font-semibold text-subtle mb-0.5">Caption</label>
-                    <textarea
-                      rows={2}
-                      value={postCaption}
-                      onChange={(e) => setPostCaption(e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-[#dbdbdb] rounded-lg bg-white resize-none"
-                    />
-                  </div>
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={postThumbUrl || post.thumbnail_src || post.display_url || avatarUrl}
+                            alt="Preview"
+                            className="w-14 h-14 rounded-lg object-cover border border-[#dbdbdb] shrink-0"
+                          />
+                          <div className="flex-1">
+                            <button
+                              type="button"
+                              onClick={() => postFileInputRef.current?.click()}
+                              className="w-full py-2 px-3 bg-white border border-[#dbdbdb] rounded-lg font-semibold text-ink hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                            >
+                              <IgImage size={15} className="text-[#0095f6]" /> Choose New Image from Device
+                            </button>
+                          </div>
+                        </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block font-semibold text-subtle mb-0.5">Views</label>
-                      <input
-                        type="text"
-                        value={postViews}
-                        onChange={(e) => setPostViews(e.target.value)}
-                        className="w-full px-2 py-1.5 border border-[#dbdbdb] rounded-lg bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-subtle mb-0.5">Likes</label>
-                      <input
-                        type="text"
-                        value={postLikes}
-                        onChange={(e) => setPostLikes(e.target.value)}
-                        className="w-full px-2 py-1.5 border border-[#dbdbdb] rounded-lg bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-subtle mb-0.5">Comments</label>
-                      <input
-                        type="text"
-                        value={postComments}
-                        onChange={(e) => setPostComments(e.target.value)}
-                        className="w-full px-2 py-1.5 border border-[#dbdbdb] rounded-lg bg-white"
-                      />
-                    </div>
-                  </div>
+                        <div>
+                          <label className="block font-semibold text-subtle mb-0.5">Caption</label>
+                          <textarea
+                            rows={2}
+                            value={postCaption}
+                            onChange={(e) => setPostCaption(e.target.value)}
+                            className="w-full px-2.5 py-1.5 border border-[#dbdbdb] rounded-lg bg-white resize-none"
+                          />
+                        </div>
 
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setEditingPostIndex(null)}
-                      className="px-3 py-1.5 border border-[#dbdbdb] rounded-lg bg-white cursor-pointer font-medium"
+                        <div>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <label className="block font-semibold text-subtle">Post Time (Instagram Age)</label>
+                            <span className="text-[10px] text-subtle">e.g. 1 hour ago, 2 Oct</span>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="e.g. 1 hour ago, 1 day ago, 2 Oct"
+                            value={postTime}
+                            onChange={(e) => setPostTime(e.target.value)}
+                            className="w-full px-2.5 py-1.5 border border-[#dbdbdb] rounded-lg bg-white text-xs"
+                          />
+                          <div className="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                            {["1 hour ago", "3 hours ago", "1 day ago", "2 days ago", "2 Oct", "28 September"].map((preset) => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => setPostTime(preset)}
+                                className="px-2 py-0.5 rounded-full text-[10px] bg-gray-100 hover:bg-gray-200 border border-gray-200 text-ink cursor-pointer shrink-0 font-medium"
+                              >
+                                {preset}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block font-semibold text-subtle mb-0.5">Views</label>
+                            <input
+                              type="text"
+                              value={postViews}
+                              onChange={(e) => setPostViews(e.target.value)}
+                              className="w-full px-2 py-1.5 border border-[#dbdbdb] rounded-lg bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-semibold text-subtle mb-0.5">Likes</label>
+                            <input
+                              type="text"
+                              value={postLikes}
+                              onChange={(e) => setPostLikes(e.target.value)}
+                              className="w-full px-2 py-1.5 border border-[#dbdbdb] rounded-lg bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-semibold text-subtle mb-0.5">Comments</label>
+                            <input
+                              type="text"
+                              value={postComments}
+                              onChange={(e) => setPostComments(e.target.value)}
+                              className="w-full px-2 py-1.5 border border-[#dbdbdb] rounded-lg bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingPostIndex(null)}
+                            className="px-3 py-1.5 border border-[#dbdbdb] rounded-lg bg-white cursor-pointer font-medium"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSavePostEdit}
+                            className="px-3 py-1.5 bg-[#0095f6] text-white rounded-lg cursor-pointer border-none font-semibold shadow-sm"
+                          >
+                            Save Post
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={post.id || `post_${idx}`}
+                      className="flex items-center gap-3 p-2 bg-white border border-[#ededed] rounded-xl hover:border-gray-300 transition-colors"
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSavePostEdit}
-                      className="px-3 py-1.5 bg-[#0095f6] text-white rounded-lg cursor-pointer border-none font-semibold"
-                    >
-                      Save Post
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Posts List */}
-              <div className="space-y-2">
-                {posts.map((post, idx) => (
-                  <div
-                    key={post.id || `post_${idx}`}
-                    className="flex items-center gap-3 p-2 bg-white border border-[#ededed] rounded-xl hover:border-gray-300 transition-colors"
-                  >
-                    <img
-                      src={post.thumbnail_src || post.display_url}
-                      alt={`Post ${idx + 1}`}
-                      className="w-14 h-14 rounded-lg object-cover bg-gray-100 flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0 text-xs">
-                      <p className="font-semibold text-ink truncate">{post.caption || `Post #${idx + 1}`}</p>
-                      <div className="flex gap-2 text-[11px] text-subtle mt-0.5">
-                        <span>👁️ {(post.views || 0).toLocaleString()}</span>
-                        <span>❤️ {(post.likes || 0).toLocaleString()}</span>
-                        <span>💬 {(post.comments || 0).toLocaleString()}</span>
+                      <img
+                        src={post.thumbnail_src || post.display_url}
+                        alt={`Post ${idx + 1}`}
+                        className="w-14 h-14 rounded-lg object-cover bg-gray-100 flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold text-ink truncate">{post.caption || `Post #${idx + 1}`}</p>
+                          <span className="text-[10px] text-subtle shrink-0">
+                            {formatPostDate(post)}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 text-[11px] text-subtle mt-0.5">
+                          <span>👁️ {(post.views || 0).toLocaleString()}</span>
+                          <span>❤️ {(post.likes || 0).toLocaleString()}</span>
+                          <span>💬 {(post.comments || 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditPost(idx)}
+                          className="p-1.5 text-subtle hover:text-[#0095f6] bg-transparent border-none cursor-pointer"
+                          title="Edit post"
+                        >
+                          <IgEdit size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePost(idx)}
+                          className="p-1.5 text-subtle hover:text-red-500 bg-transparent border-none cursor-pointer"
+                          title="Delete post"
+                        >
+                          <IgTrash size={16} />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditPost(idx)}
-                        className="p-1.5 text-subtle hover:text-[#0095f6] bg-transparent border-none cursor-pointer"
-                        title="Edit post"
-                      >
-                        <IgEdit size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePost(idx)}
-                        className="p-1.5 text-subtle hover:text-red-500 bg-transparent border-none cursor-pointer"
-                        title="Delete post"
-                      >
-                        <IgTrash size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+
             </div>
           )}
 

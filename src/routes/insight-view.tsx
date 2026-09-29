@@ -12,9 +12,12 @@ import {
   Edit3,
   Sliders,
   Eye,
+  EyeOff,
   X,
   RotateCcw,
   MoreVertical,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import {
   IgHeart,
@@ -29,7 +32,7 @@ import {
 } from "@/components/ig-icons";
 import { FloatingBottomNav } from "@/components/floating-bottom-nav";
 import reelMachine from "@/assets/reel-machine.jpg";
-import { useProfile, formatCompactNumber } from "@/lib/profile-store";
+import { useProfile, formatCompactNumber, updatePostData } from "@/lib/profile-store";
 import { isRuntimeSecurityValid, crashAppSecurityPanic } from "@/lib/access-code-service";
 import {
   loadPostInsights,
@@ -39,6 +42,7 @@ import {
   GraphSplineMath,
   type PostInsightsData,
   type GraphPoint,
+  type CountryData,
 } from "@/lib/insight-store";
 import { EditPostInsightModal } from "@/components/edit-post-insight-modal";
 import { InteractiveGraphEditor } from "@/components/interactive-graph-editor";
@@ -47,6 +51,7 @@ import {
   SingleRateEditDialog,
   SinglePercentageEditDialog,
   YAxisEditDialog,
+  CountryEditDialog,
 } from "@/components/single-field-dialogs";
 
 export const Route = createFileRoute("/insight-view")({
@@ -87,11 +92,17 @@ function InsightHeader({
   onToggleEditMode,
   onOpenFullModal,
   onResetInsights,
+  hideThreeDots,
+  onToggleHideThreeDots,
+  isLoadingShimmer,
 }: {
   isEditMode: boolean;
   onToggleEditMode: () => void;
   onOpenFullModal: () => void;
   onResetInsights: () => void;
+  hideThreeDots: boolean;
+  onToggleHideThreeDots: () => void;
+  isLoadingShimmer?: boolean;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -111,27 +122,67 @@ function InsightHeader({
           <h1 className="iv-header-title">Reel insights</h1>
         </div>
 
-        {/* Top Right: TrendingUp graph icon + Three vertical dots */}
-        <div className="iv-header-actions">
+        {/* Top Right: TrendingUp graph icon + Three vertical dots (hidden during shimmer, 10ms fade after) */}
+        <div
+          className={`iv-header-actions transition-opacity duration-[10ms] ease-in ${
+            isLoadingShimmer ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+        >
           <button
             type="button"
-            onClick={() => setShowInfoModal(true)}
-            className="iv-icon-btn"
-            aria-label="Trending stats"
-            title="About Reel Insights"
+            onClick={() => {
+              if (hideThreeDots) {
+                // If 3-dots are hidden, left icon enables/toggles edit mode or opens options menu
+                if (!isEditMode) {
+                  onToggleEditMode();
+                } else {
+                  setShowMenu(true);
+                }
+              } else {
+                setShowInfoModal(true);
+              }
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (hideThreeDots) {
+                setShowMenu(true);
+              }
+            }}
+            className={`iv-icon-btn ${
+              (hideThreeDots && isEditMode) || (!hideThreeDots && isEditMode)
+                ? "text-[#e1306c]"
+                : ""
+            }`}
+            aria-label={
+              hideThreeDots
+                ? isEditMode
+                  ? "Edit Mode Options"
+                  : "Enable Edit Mode"
+                : "Trending stats"
+            }
+            title={
+              hideThreeDots
+                ? isEditMode
+                  ? "Edit Mode Active (tap for options)"
+                  : "Tap to enable Edit Mode"
+                : "About Reel Insights"
+            }
           >
             <TrendingUp size={22} strokeWidth={2.2} />
           </button>
 
-          <button
-            type="button"
-            onClick={() => setShowMenu(true)}
-            className={`iv-icon-btn ${isEditMode ? "text-[#e1306c]" : ""}`}
-            aria-label="More options"
-            title="Options & Edit Mode"
-          >
-            <MoreVertical size={22} strokeWidth={2.2} />
-          </button>
+
+          {!hideThreeDots && (
+            <button
+              type="button"
+              onClick={() => setShowMenu(true)}
+              className={`iv-icon-btn ${isEditMode ? "text-[#e1306c]" : ""}`}
+              aria-label="More options"
+              title="Options & Edit Mode"
+            >
+              <MoreVertical size={22} strokeWidth={2.2} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -174,6 +225,28 @@ function InsightHeader({
                 <div className="profile-menu-item-text">
                   <b>{isEditMode ? "Disable Edit Mode" : "Enable Edit Mode"}</b>
                   <span>{isEditMode ? "Currently active — tap to lock metrics" : "Tap on any metric, percentage, or graph curve to edit"}</span>
+                </div>
+              </button>
+
+              {/* Hide / Unhide 3-Dots Menu */}
+              <button
+                type="button"
+                className="profile-menu-item"
+                onClick={() => {
+                  onToggleHideThreeDots();
+                  setShowMenu(false);
+                }}
+              >
+                <div className="profile-menu-item-icon">
+                  {hideThreeDots ? <Eye size={18} /> : <EyeOff size={18} />}
+                </div>
+                <div className="profile-menu-item-text">
+                  <b>{hideThreeDots ? "Show 3-Dots Menu" : "Hide 3-Dots Menu"}</b>
+                  <span>
+                    {hideThreeDots
+                      ? "Display the 3-dots icon again in the top right header"
+                      : "Hide 3-dots icon — Edit Mode is toggled by the Trending icon"}
+                  </span>
                 </div>
               </button>
 
@@ -259,11 +332,13 @@ function ReelPreviewAndMetrics({
   insights,
   displayImage,
   isEditMode,
+  isLoadingShimmer,
   onEditField,
 }: {
   insights: PostInsightsData;
   displayImage: string;
   isEditMode: boolean;
+  isLoadingShimmer?: boolean;
   onEditField: (field: "likes" | "comments" | "reposts" | "shares" | "saves", currentVal: number) => void;
 }) {
   const reelMetrics: Array<{
@@ -310,9 +385,15 @@ function ReelPreviewAndMetrics({
             title={`Click to edit ${field}`}
           >
             <Icon size={24} />
-            <b className="text-xs font-bold mt-1 flex items-center gap-0.5">
-              {value}
-              {isEditMode && <Pencil size={9} className="text-[#bc1888]" />}
+            <b className="text-xs font-bold mt-1 flex items-center justify-center gap-0.5 min-h-[16px] min-w-[28px]">
+              {isLoadingShimmer ? (
+                <span className="w-6 h-3 rounded bg-gray-200 animate-pulse my-0.5 inline-block" />
+              ) : (
+                <>
+                  {value}
+                  {isEditMode && <Pencil size={9} className="text-[#bc1888]" />}
+                </>
+              )}
             </b>
           </button>
         ))}
@@ -320,6 +401,7 @@ function ReelPreviewAndMetrics({
     </section>
   );
 }
+
 
 function Tabs({ current, onChange }: { current: Tab; onChange: (tab: Tab) => void }) {
   return (
@@ -344,6 +426,7 @@ function OverviewTab({
   insights,
   imgUrl,
   isEditMode,
+  isLoadingShimmer,
   onEditText,
   onEditRate,
   onEditPercentage,
@@ -353,6 +436,7 @@ function OverviewTab({
   insights: PostInsightsData;
   imgUrl: string;
   isEditMode: boolean;
+  isLoadingShimmer?: boolean;
   onEditText: (title: string, currentVal: string | number, onSave: (v: string) => void) => void;
   onEditRate: (
     key: "skip" | "share" | "like" | "save" | "repost" | "comment",
@@ -492,103 +576,113 @@ function OverviewTab({
       {/* Summary with 4 Stat Cards */}
       <section className="iv-section">
         <InfoTitle>Summary</InfoTitle>
-        <div className="iv-summary-grid">
-          {/* Card 1: Views */}
-          <div
-            onClick={
-              isEditMode
-                ? () =>
-                    onEditText("Edit Views Count", insights.views, (v) => {
-                      const parsed = GraphSplineMath.parseViews(v);
-                      if (parsed >= 0) {
-                        insights.views = parsed;
-                        if (insights.viewsThisReelPoints.length > 0) {
-                          insights.viewsThisReelPoints[insights.viewsThisReelPoints.length - 1].value = parsed;
+
+        {isLoadingShimmer ? (
+          <div className="iv-summary-grid">
+            <div className="h-[84px] rounded-2xl bg-gray-200 animate-pulse" />
+            <div className="h-[84px] rounded-2xl bg-gray-200 animate-pulse" />
+            <div className="h-[84px] rounded-2xl bg-gray-200 animate-pulse" />
+            <div className="h-[84px] rounded-2xl bg-gray-200 animate-pulse" />
+          </div>
+        ) : (
+          <div className="iv-summary-grid">
+            {/* Card 1: Views */}
+            <div
+              onClick={
+                isEditMode
+                  ? () =>
+                      onEditText("Edit Views Count", insights.views, (v) => {
+                        const parsed = GraphSplineMath.parseViews(v);
+                        if (parsed >= 0) {
+                          insights.views = parsed;
+                          if (insights.viewsThisReelPoints.length > 0) {
+                            insights.viewsThisReelPoints[insights.viewsThisReelPoints.length - 1].value = parsed;
+                          }
                         }
-                      }
-                    })
-                : undefined
-            }
-            className={`iv-card ${
-              isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
-            }`}
-            title={isEditMode ? "Click to edit Views" : undefined}
-          >
-            <span className="iv-card-label flex items-center justify-between">
-              <span>Views</span>
-              {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
-            </span>
-            <strong className="iv-card-val">{insights.views.toLocaleString()}</strong>
-          </div>
+                      })
+                  : undefined
+              }
+              className={`iv-card ${
+                isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
+              }`}
+              title={isEditMode ? "Click to edit Views" : undefined}
+            >
+              <span className="iv-card-label flex items-center justify-between">
+                <span>Views</span>
+                {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
+              </span>
+              <strong className="iv-card-val">{insights.views.toLocaleString()}</strong>
+            </div>
 
-          {/* Card 2: Viewers */}
-          <div
-            onClick={
-              isEditMode
-                ? () =>
-                    onEditText("Edit Viewers / Reach", insights.viewers, (v) => {
-                      const parsed = GraphSplineMath.parseViews(v);
-                      if (parsed >= 0) insights.viewers = parsed;
-                    })
-                : undefined
-            }
-            className={`iv-card ${
-              isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
-            }`}
-            title={isEditMode ? "Click to edit Viewers" : undefined}
-          >
-            <span className="iv-card-label flex items-center justify-between">
-              <span>Viewers</span>
-              {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
-            </span>
-            <strong className="iv-card-val">{insights.viewers.toLocaleString()}</strong>
-          </div>
+            {/* Card 2: Viewers */}
+            <div
+              onClick={
+                isEditMode
+                  ? () =>
+                      onEditText("Edit Viewers / Reach", insights.viewers, (v) => {
+                        const parsed = GraphSplineMath.parseViews(v);
+                        if (parsed >= 0) insights.viewers = parsed;
+                      })
+                  : undefined
+              }
+              className={`iv-card ${
+                isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
+              }`}
+              title={isEditMode ? "Click to edit Viewers" : undefined}
+            >
+              <span className="iv-card-label flex items-center justify-between">
+                <span>Viewers</span>
+                {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
+              </span>
+              <strong className="iv-card-val">{insights.viewers.toLocaleString()}</strong>
+            </div>
 
-          {/* Card 3: Avg watch time */}
-          <div
-            onClick={
-              isEditMode
-                ? () =>
-                    onEditText("Edit Average Watch Time", insights.averageWatchTime || "13s", (v) => {
-                      insights.averageWatchTime = v.trim() || "13s";
-                    })
-                : undefined
-            }
-            className={`iv-card ${
-              isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
-            }`}
-            title={isEditMode ? "Click to edit Average Watch Time" : undefined}
-          >
-            <span className="iv-card-label flex items-center justify-between">
-              <span>Average watch time</span>
-              {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
-            </span>
-            <strong className="iv-card-val">{insights.averageWatchTime || "13s"}</strong>
-          </div>
+            {/* Card 3: Avg watch time */}
+            <div
+              onClick={
+                isEditMode
+                  ? () =>
+                      onEditText("Edit Average Watch Time", insights.averageWatchTime || "13s", (v) => {
+                        insights.averageWatchTime = v.trim() || "13s";
+                      })
+                  : undefined
+              }
+              className={`iv-card ${
+                isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
+              }`}
+              title={isEditMode ? "Click to edit Average Watch Time" : undefined}
+            >
+              <span className="iv-card-label flex items-center justify-between">
+                <span>Average watch time</span>
+                {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
+              </span>
+              <strong className="iv-card-val">{insights.averageWatchTime || "13s"}</strong>
+            </div>
 
-          {/* Card 4: Follows */}
-          <div
-            onClick={
-              isEditMode
-                ? () =>
-                    onEditText("Edit Follows (Summary)", insights.followsSummary, (v) => {
-                      const parsed = parseInt(v) || 0;
-                      insights.followsSummary = parsed;
-                    })
-                : undefined
-            }
-            className={`iv-card ${
-              isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
-            }`}
-            title={isEditMode ? "Click to edit Follows" : undefined}
-          >
-            <span className="iv-card-label flex items-center justify-between">
-              <span>Follows</span>
-              {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
-            </span>
-            <strong className="iv-card-val">{insights.followsSummary.toLocaleString()}</strong>
+            {/* Card 4: Follows */}
+            <div
+              onClick={
+                isEditMode
+                  ? () =>
+                      onEditText("Edit Follows (Summary)", insights.followsSummary, (v) => {
+                        const parsed = parseInt(v) || 0;
+                        insights.followsSummary = parsed;
+                      })
+                  : undefined
+              }
+              className={`iv-card ${
+                isEditMode ? "cursor-pointer hover:border-[#bc1888] ring-1 ring-dashed ring-[#bc1888]/40" : ""
+              }`}
+              title={isEditMode ? "Click to edit Follows" : undefined}
+            >
+              <span className="iv-card-label flex items-center justify-between">
+                <span>Follows</span>
+                {isEditMode && <Pencil size={11} className="text-[#bc1888]" />}
+              </span>
+              <strong className="iv-card-val">{(insights.followsSummary ?? 0).toLocaleString()}</strong>
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* Views Over Time Graph */}
@@ -621,171 +715,194 @@ function OverviewTab({
           )}
         </div>
 
-        <div className="iv-filter-pills" role="tablist">
-          <button
-            type="button"
-            className={viewsFilter === "all" ? "active" : ""}
-            onClick={() => setViewsFilter("all")}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            className={viewsFilter === "followers" ? "active" : ""}
-            onClick={() => setViewsFilter("followers")}
-          >
-            Followers
-          </button>
-          <button
-            type="button"
-            className={viewsFilter === "non-followers" ? "active" : ""}
-            onClick={() => setViewsFilter("non-followers")}
-          >
-            Non-followers
-          </button>
-        </div>
-
-        <div className="iv-chart-container relative group">
-          {/* Y-Axis scale (Clickable in edit mode to customize Max/Mid/Start values) */}
-          <div
-            onClick={isEditMode ? onEditYAxis : undefined}
-            className={`iv-chart-y-axis ${isEditMode ? "cursor-pointer hover:text-[#bc1888]" : ""} transition-colors`}
-            title={isEditMode ? "Click to edit Y-Axis values" : undefined}
-          >
-            <span className="font-bold">
-              {insights.viewsGraphMax || GraphSplineMath.formatViews(maxViewsCeiling)}
-            </span>
-            <span className="font-bold">
-              {insights.viewsGraphMid || GraphSplineMath.formatViews(maxViewsCeiling / 2)}
-            </span>
-            <span className="font-bold">{insights.viewsGraphStart || "0"}</span>
+        {isLoadingShimmer ? (
+          <div className="py-2.5 flex items-center justify-between">
+            <div className="w-44 h-3.5 rounded-full bg-gray-200 animate-pulse" />
+            <div className="w-16 h-3.5 rounded-full bg-gray-200 animate-pulse" />
           </div>
-
-          <div
-            className={`iv-chart-area ${isEditMode ? "cursor-pointer" : ""}`}
-            onClick={isEditMode ? () => onOpenGraphEditor("this_reel") : undefined}
-            title={isEditMode ? "Click to open interactive graph drag editor" : undefined}
-          >
-            <svg
-              viewBox="0 0 340 120"
-              preserveAspectRatio="none"
-              className="iv-views-svg w-full h-full"
-            >
-              <line x1="0" y1="12" x2="340" y2="12" className="iv-grid-line" />
-              <line x1="0" y1="60" x2="340" y2="60" className="iv-grid-line" />
-              <line x1="0" y1="108" x2="340" y2="108" className="iv-grid-line" />
-
-              {/* Typical reel dashed curve */}
-              {typicalReelSvgPath && (
-                <path
-                  d={typicalReelSvgPath}
-                  className="iv-typical-curve"
-                  fill="none"
-                  strokeWidth="2.2"
-                  strokeDasharray="4,4"
-                />
-              )}
-
-              {/* This reel magenta spline curve */}
-              {thisReelSvgPath && (
-                <path
-                  d={thisReelSvgPath}
-                  className="iv-reel-curve"
-                  fill="none"
-                  strokeWidth="2.6"
-                />
-              )}
-            </svg>
-
-            {/* X-Axis Dates */}
-            <div
-              className={`iv-chart-x-axis ${isEditMode ? "cursor-pointer hover:text-[#bc1888]" : ""} transition-colors`}
-              onClick={
-                isEditMode
-                  ? (e) => {
-                      e.stopPropagation();
-                      onEditText("Edit Start Date Milestone", insights.viewsGraphDates[0], (v) => {
-                        insights.viewsGraphDates[0] = v.trim() || insights.viewsGraphDates[0];
-                      });
-                    }
-                  : undefined
-              }
-              title={isEditMode ? "Click to edit date milestones" : undefined}
-            >
-              <span>{insights.viewsGraphDates[0]}</span>
-              <span>{insights.viewsGraphDates[1]}</span>
-              <span>{insights.viewsGraphDates[2]}</span>
+        ) : (
+          <>
+            <div className="iv-filter-pills" role="tablist">
+              <button
+                type="button"
+                className={viewsFilter === "all" ? "active" : ""}
+                onClick={() => setViewsFilter("all")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={viewsFilter === "followers" ? "active" : ""}
+                onClick={() => setViewsFilter("followers")}
+              >
+                Followers
+              </button>
+              <button
+                type="button"
+                className={viewsFilter === "non-followers" ? "active" : ""}
+                onClick={() => setViewsFilter("non-followers")}
+              >
+                Non-followers
+              </button>
             </div>
-          </div>
-        </div>
 
-        {/* Legend buttons to select curve to edit */}
-        <div className="iv-chart-legend">
-          <button
-            type="button"
-            onClick={isEditMode ? () => onOpenGraphEditor("this_reel") : undefined}
-            className={`iv-legend-item bg-transparent border-none ${
-              isEditMode ? "cursor-pointer hover:opacity-80" : "cursor-default"
-            } flex items-center gap-1 font-bold text-xs`}
-            title={isEditMode ? "Click to edit This Reel curve" : undefined}
-          >
-            <i className="dot magenta" />
-            <span>This reel</span>
-            {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
-          </button>
-          <button
-            type="button"
-            onClick={isEditMode ? () => onOpenGraphEditor("typical_reel") : undefined}
-            className={`iv-legend-item bg-transparent border-none ${
-              isEditMode ? "cursor-pointer hover:opacity-80" : "cursor-default"
-            } flex items-center gap-1 font-bold text-xs`}
-            title={isEditMode ? "Click to edit Typical Reel curve" : undefined}
-          >
-            <i className="dot dashed" />
-            <span>Your typical reel</span>
-            {isEditMode && <Pencil size={10} className="text-[#737373]" />}
-          </button>
-        </div>
+            <div className="iv-chart-container relative group">
+              {/* Y-Axis scale (Clickable in edit mode to customize Max/Mid/Start values) */}
+              <div
+                onClick={isEditMode ? onEditYAxis : undefined}
+                className={`iv-chart-y-axis ${isEditMode ? "cursor-pointer hover:text-[#bc1888]" : ""} transition-colors`}
+                title={isEditMode ? "Click to edit Y-Axis values" : undefined}
+              >
+                <span className="font-bold">
+                  {insights.viewsGraphMax || GraphSplineMath.formatViews(maxViewsCeiling)}
+                </span>
+                <span className="font-bold">
+                  {insights.viewsGraphMid || GraphSplineMath.formatViews(maxViewsCeiling / 2)}
+                </span>
+                <span className="font-bold">{insights.viewsGraphStart || "0"}</span>
+              </div>
+
+              <div
+                className={`iv-chart-area ${isEditMode ? "cursor-pointer" : ""}`}
+                onClick={isEditMode ? () => onOpenGraphEditor("this_reel") : undefined}
+                title={isEditMode ? "Click to open interactive graph drag editor" : undefined}
+              >
+                <svg
+                  viewBox="0 0 340 120"
+                  preserveAspectRatio="none"
+                  className="iv-views-svg w-full h-full"
+                >
+                  <line x1="0" y1="12" x2="340" y2="12" className="iv-grid-line" />
+                  <line x1="0" y1="60" x2="340" y2="60" className="iv-grid-line" />
+                  <line x1="0" y1="108" x2="340" y2="108" className="iv-grid-line" />
+
+                  {/* Typical reel dashed curve */}
+                  {typicalReelSvgPath && (
+                    <path
+                      d={typicalReelSvgPath}
+                      className="iv-typical-curve"
+                      fill="none"
+                      strokeWidth="2.2"
+                      strokeDasharray="4,4"
+                    />
+                  )}
+
+                  {/* This reel magenta spline curve */}
+                  {thisReelSvgPath && (
+                    <path
+                      d={thisReelSvgPath}
+                      className="iv-reel-curve"
+                      fill="none"
+                      strokeWidth="2.6"
+                    />
+                  )}
+                </svg>
+
+                {/* X-Axis Dates */}
+                <div
+                  className={`iv-chart-x-axis ${isEditMode ? "cursor-pointer hover:text-[#bc1888]" : ""} transition-colors`}
+                  onClick={
+                    isEditMode
+                      ? (e) => {
+                          e.stopPropagation();
+                          onEditText("Edit Start Date Milestone", insights.viewsGraphDates[0], (v) => {
+                            insights.viewsGraphDates[0] = v.trim() || insights.viewsGraphDates[0];
+                          });
+                        }
+                      : undefined
+                  }
+                  title={isEditMode ? "Click to edit date milestones" : undefined}
+                >
+                  <span>{insights.viewsGraphDates[0]}</span>
+                  <span>{insights.viewsGraphDates[1]}</span>
+                  <span>{insights.viewsGraphDates[2]}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Legend buttons to select curve to edit */}
+            <div className="iv-chart-legend">
+              <button
+                type="button"
+                onClick={isEditMode ? () => onOpenGraphEditor("this_reel") : undefined}
+                className={`iv-legend-item bg-transparent border-none ${
+                  isEditMode ? "cursor-pointer hover:opacity-80" : "cursor-default"
+                } flex items-center gap-1 font-bold text-xs`}
+                title={isEditMode ? "Click to edit This Reel curve" : undefined}
+              >
+                <i className="dot magenta" />
+                <span>This reel</span>
+                {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+              </button>
+              <button
+                type="button"
+                onClick={isEditMode ? () => onOpenGraphEditor("typical_reel") : undefined}
+                className={`iv-legend-item bg-transparent border-none ${
+                  isEditMode ? "cursor-pointer hover:opacity-80" : "cursor-default"
+                } flex items-center gap-1 font-bold text-xs`}
+                title={isEditMode ? "Click to edit Typical Reel curve" : undefined}
+              >
+                <i className="dot dashed" />
+                <span>Your typical reel</span>
+                {isEditMode && <Pencil size={10} className="text-[#737373]" />}
+              </button>
+            </div>
+          </>
+        )}
       </section>
 
       {/* What impacts your views */}
       <section className="iv-section">
         <InfoTitle>What impacts your views</InfoTitle>
-        <p className="iv-section-sub">Rates are listed in order of importance to reach.</p>
-        <div className="iv-rates-list">
-          {impactRates.map(({ key, Icon, label, rate, numRate, statusSetting, status }) => (
-            <div
-              key={label}
-              onClick={isEditMode ? () => onEditRate(key, label, numRate, statusSetting) : undefined}
-              className={`iv-rate-row transition-colors ${
-                isEditMode ? "cursor-pointer hover:bg-pink-50/50" : ""
-              }`}
-              title={isEditMode ? `Click to edit ${label}` : undefined}
-            >
-              <div className="iv-rate-badge">
-                <Icon size={22} />
+        {isLoadingShimmer ? (
+          <div className="space-y-4 py-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="w-48 h-3.5 rounded-full bg-gray-200 animate-pulse" />
+                <div className="w-16 h-3.5 rounded-full bg-gray-200 animate-pulse" />
               </div>
-              <span className="iv-rate-label flex items-center gap-1">
-                <span>{label}</span>
-                {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
-              </span>
-              <div className="iv-rate-right flex items-center gap-2">
-                <strong className="iv-rate-pct">{rate}</strong>
-                <span
-                  className={`iv-rate-tag ${
-                    status.isGreen ? "green" : status.isRed ? "red" : "grey"
+            ))}
+          </div>
+        ) : (
+          <>
+            <p className="iv-section-sub">Rates are listed in order of importance to reach.</p>
+            <div className="iv-rates-list">
+              {impactRates.map(({ key, Icon, label, rate, numRate, statusSetting, status }) => (
+                <div
+                  key={label}
+                  onClick={isEditMode ? () => onEditRate(key, label, numRate, statusSetting) : undefined}
+                  className={`iv-rate-row transition-colors ${
+                    isEditMode ? "cursor-pointer hover:bg-pink-50/50" : ""
                   }`}
-                  style={{ color: status.color }}
+                  title={isEditMode ? `Click to edit ${label}` : undefined}
                 >
-                  {status.text}
-                </span>
-              </div>
+                  <div className="iv-rate-badge">
+                    <Icon size={22} />
+                  </div>
+                  <span className="iv-rate-label flex items-center gap-1">
+                    <span>{label}</span>
+                    {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+                  </span>
+                  <div className="iv-rate-right flex items-center gap-2">
+                    <strong className="iv-rate-pct">{rate}</strong>
+                    <span
+                      className={`iv-rate-tag ${
+                        status.isGreen ? "green" : status.isRed ? "red" : "grey"
+                      }`}
+                      style={{ color: status.color }}
+                    >
+                      {status.text}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </section>
 
       {/* How long people watched your reel */}
+
       <section className="iv-section">
         <div className="flex items-center justify-between mb-2">
           <div
@@ -1110,18 +1227,18 @@ function AudienceTab({
   insights,
   isEditMode,
   onEditPercentage,
+  onEditCountry,
+  onAddCountry,
+  onDeleteCountry,
 }: {
   insights: PostInsightsData;
   isEditMode: boolean;
   onEditPercentage: (title: string, currentVal: number, onSave: (v: number) => void) => void;
+  onEditCountry: (index: number, country: CountryData) => void;
+  onAddCountry: () => void;
+  onDeleteCountry: (index: number) => void;
 }) {
   const [detailTab, setDetailTab] = useState<AudienceDetailTab>("age");
-
-  const countryData = insights.countries.map((c) => ({
-    label: c.name,
-    pct: `${c.percentage.toFixed(1)}%`,
-    width: c.percentage,
-  }));
 
   const ageData: Array<{ key: keyof typeof insights.age; label: string; pct: string; width: number }> = [
     { key: "age13_17", label: "13-17", pct: `${insights.age.age13_17.toFixed(1)}%`, width: insights.age.age13_17 },
@@ -1142,9 +1259,6 @@ function AudienceTab({
       purple: true,
     },
   ];
-
-  const currentDetails =
-    detailTab === "country" ? countryData : detailTab === "age" ? ageData : genderData;
 
   return (
     <div className="iv-tab-content">
@@ -1241,18 +1355,103 @@ function AudienceTab({
         </div>
 
         <div className="iv-sources-list">
-          {currentDetails.map((item, idx) => (
-            <div
-              key={item.label}
-              onClick={
-                isEditMode
-                  ? () => {
-                      if (detailTab === "age") {
-                        const key = (item as any).key as keyof typeof insights.age;
+          {detailTab === "country" ? (
+            <>
+              {insights.countries.map((c, idx) => (
+                <div
+                  key={c.id || `${c.name}_${idx}`}
+                  onClick={
+                    isEditMode
+                      ? () => onEditCountry(idx, c)
+                      : undefined
+                  }
+                  className={`iv-source-row transition-colors ${
+                    isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+                  }`}
+                  title={isEditMode ? `Click to edit ${c.name}` : undefined}
+                >
+                  <span className="iv-source-label flex items-center gap-1.5 min-w-0">
+                    <span className="truncate">{c.name}</span>
+                    {isEditMode && <Pencil size={11} className="text-[#bc1888] shrink-0" />}
+                  </span>
+                  <div className="iv-source-bar-row">
+                    <div className="iv-progress-track">
+                      <div
+                        className="iv-progress-fill magenta"
+                        style={{ width: `${Math.min(100, c.percentage)}%` }}
+                      />
+                    </div>
+                    <strong className="iv-source-pct">{c.percentage.toFixed(1)}%</strong>
+                    {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteCountry(idx);
+                        }}
+                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md bg-transparent border-none cursor-pointer transition-colors ml-1.5 shrink-0"
+                        title={`Delete ${c.name}`}
+                        aria-label={`Delete ${c.name}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={onAddCountry}
+                  className="w-full mt-3 py-2.5 px-3 border border-dashed border-[#bc1888]/50 bg-pink-50/50 hover:bg-pink-50 text-[#bc1888] font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+                >
+                  <Plus size={15} />
+                  <span>Add Country</span>
+                </button>
+              )}
+            </>
+          ) : detailTab === "age" ? (
+            ageData.map((item) => (
+              <div
+                key={item.label}
+                onClick={
+                  isEditMode
+                    ? () => {
+                        const key = item.key as keyof typeof insights.age;
                         onEditPercentage(`Edit Age ${item.label} %`, item.width, (v) => {
                           insights.age[key] = v;
                         });
-                      } else if (detailTab === "gender") {
+                      }
+                    : undefined
+                }
+                className={`iv-source-row transition-colors ${
+                  isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+                }`}
+                title={isEditMode ? `Click to edit ${item.label} %` : undefined}
+              >
+                <span className="iv-source-label flex items-center gap-1">
+                  <span>{item.label}</span>
+                  {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+                </span>
+                <div className="iv-source-bar-row">
+                  <div className="iv-progress-track">
+                    <div
+                      className="iv-progress-fill magenta"
+                      style={{ width: `${Math.min(100, item.width)}%` }}
+                    />
+                  </div>
+                  <strong className="iv-source-pct">{item.pct}</strong>
+                </div>
+              </div>
+            ))
+          ) : (
+            genderData.map((item) => (
+              <div
+                key={item.label}
+                onClick={
+                  isEditMode
+                    ? () => {
                         onEditPercentage(`Edit ${item.label} %`, item.width, (v) => {
                           if (item.label === "Men") {
                             insights.gender.men = v;
@@ -1262,38 +1461,32 @@ function AudienceTab({
                             insights.gender.men = Number((100 - v).toFixed(1));
                           }
                         });
-                      } else if (detailTab === "country") {
-                        onEditPercentage(`Edit ${item.label} %`, item.width, (v) => {
-                          if (insights.countries[idx]) {
-                            insights.countries[idx].percentage = v;
-                          }
-                        });
                       }
-                    }
-                  : undefined
-              }
-              className={`iv-source-row transition-colors ${
-                isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
-              }`}
-              title={isEditMode ? `Click to edit ${item.label} %` : undefined}
-            >
-              <span className="iv-source-label flex items-center gap-1">
-                <span>{item.label}</span>
-                {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
-              </span>
-              <div className="iv-source-bar-row">
-                <div className="iv-progress-track">
-                  <div
-                    className={`iv-progress-fill ${
-                      (item as any).purple ? "purple" : "magenta"
-                    }`}
-                    style={{ width: `${Math.min(100, item.width)}%` }}
-                  />
+                    : undefined
+                }
+                className={`iv-source-row transition-colors ${
+                  isEditMode ? "cursor-pointer hover:bg-gray-50" : ""
+                }`}
+                title={isEditMode ? `Click to edit ${item.label} %` : undefined}
+              >
+                <span className="iv-source-label flex items-center gap-1">
+                  <span>{item.label}</span>
+                  {isEditMode && <Pencil size={10} className="text-[#bc1888]" />}
+                </span>
+                <div className="iv-source-bar-row">
+                  <div className="iv-progress-track">
+                    <div
+                      className={`iv-progress-fill ${
+                        item.purple ? "purple" : "magenta"
+                      }`}
+                      style={{ width: `${Math.min(100, item.width)}%` }}
+                    />
+                  </div>
+                  <strong className="iv-source-pct">{item.pct}</strong>
                 </div>
-                <strong className="iv-source-pct">{item.pct}</strong>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
     </div>
@@ -1346,6 +1539,18 @@ function InsightViewPage() {
 
   const [yAxisDialog, setYAxisDialog] = useState(false);
 
+  // Country Edit Dialog State
+  const [countryDialog, setCountryDialog] = useState<{
+    isOpen: boolean;
+    mode: "edit" | "add";
+    targetIndex?: number;
+    initialName?: string;
+    initialPercentage?: number;
+  }>({
+    isOpen: false,
+    mode: "add",
+  });
+
   // Interactive Graph Line Drag Modal State
   const [interactiveGraphTarget, setInteractiveGraphTarget] = useState<
     "this_reel" | "typical_reel" | "watch_retention" | "likes_retention" | null
@@ -1381,6 +1586,21 @@ function InsightViewPage() {
     const copy = { ...updated };
     setInsights(copy);
     savePostInsights(copy);
+
+    // Two-way sync with profile post and post view!
+    if (post) {
+      updatePostData(postId, {
+        views: copy.views,
+        likes: copy.likes,
+        comments: copy.comments,
+        ...(copy.customThumbnailUrl
+          ? {
+              thumbnail_src: copy.customThumbnailUrl,
+              display_url: copy.customThumbnailUrl,
+            }
+          : {}),
+      });
+    }
   };
 
   const handleResetInsights = () => {
@@ -1394,6 +1614,32 @@ function InsightViewPage() {
     savePostInsights(fresh);
   };
 
+  const [hideThreeDots, setHideThreeDots] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("iv_hide_three_dots") === "true";
+    }
+    return false;
+  });
+
+  const [isLoadingShimmer, setIsLoadingShimmer] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoadingShimmer(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleToggleHideThreeDots = () => {
+    setHideThreeDots((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("iv_hide_three_dots", String(next));
+      }
+      return next;
+    });
+  };
+
   return (
     <main className="iv-page min-h-screen bg-page text-ink">
       <div className="iv-phone pb-14">
@@ -1402,7 +1648,11 @@ function InsightViewPage() {
           onToggleEditMode={() => setIsEditMode(!isEditMode)}
           onOpenFullModal={() => setIsFullModalOpen(true)}
           onResetInsights={handleResetInsights}
+          hideThreeDots={hideThreeDots}
+          onToggleHideThreeDots={handleToggleHideThreeDots}
+          isLoadingShimmer={isLoadingShimmer}
         />
+
 
         {/* Edit Mode Banner when activated */}
         {isEditMode && (
@@ -1437,6 +1687,7 @@ function InsightViewPage() {
           insights={insights}
           displayImage={imgUrl}
           isEditMode={isEditMode}
+          isLoadingShimmer={isLoadingShimmer}
           onEditField={(field, currentNum) => {
             setTextDialog({
               isOpen: true,
@@ -1460,6 +1711,8 @@ function InsightViewPage() {
             insights={insights}
             imgUrl={imgUrl}
             isEditMode={isEditMode}
+            isLoadingShimmer={isLoadingShimmer}
+
             onEditText={(title, currentVal, onSaveField) => {
               setTextDialog({
                 isOpen: true,
@@ -1529,6 +1782,27 @@ function InsightViewPage() {
                 },
               });
             }}
+            onEditCountry={(index, country) => {
+              setCountryDialog({
+                isOpen: true,
+                mode: "edit",
+                targetIndex: index,
+                initialName: country.name,
+                initialPercentage: country.percentage,
+              });
+            }}
+            onAddCountry={() => {
+              setCountryDialog({
+                isOpen: true,
+                mode: "add",
+                initialName: "",
+                initialPercentage: 5,
+              });
+            }}
+            onDeleteCountry={(index) => {
+              const updatedCountries = insights.countries.filter((_, i) => i !== index);
+              handleSaveInsights({ ...insights, countries: updatedCountries });
+            }}
           />
         )}
 
@@ -1575,7 +1849,44 @@ function InsightViewPage() {
         }}
       />
 
-      {/* 4. Y-Axis Custom Max/Mid/Start Scale Dialog */}
+      {/* 4. Country Edit / Add Dialog */}
+      <CountryEditDialog
+        isOpen={countryDialog.isOpen}
+        onClose={() => setCountryDialog((prev) => ({ ...prev, isOpen: false }))}
+        initialName={countryDialog.initialName}
+        initialPercentage={countryDialog.initialPercentage}
+        mode={countryDialog.mode}
+        onSave={(name, percentage) => {
+          let updatedCountries: CountryData[];
+          if (countryDialog.mode === "add") {
+            const newC: CountryData = {
+              id: `c_${Date.now()}`,
+              name,
+              percentage,
+            };
+            updatedCountries = [...insights.countries, newC];
+          } else if (countryDialog.targetIndex !== undefined) {
+            updatedCountries = insights.countries.map((c, i) =>
+              i === countryDialog.targetIndex ? { ...c, name, percentage } : c
+            );
+          } else {
+            updatedCountries = insights.countries;
+          }
+          handleSaveInsights({ ...insights, countries: updatedCountries });
+        }}
+        onDelete={
+          countryDialog.mode === "edit" && countryDialog.targetIndex !== undefined
+            ? () => {
+                const updatedCountries = insights.countries.filter(
+                  (_, i) => i !== countryDialog.targetIndex
+                );
+                handleSaveInsights({ ...insights, countries: updatedCountries });
+              }
+            : undefined
+        }
+      />
+
+      {/* 5. Y-Axis Custom Max/Mid/Start Scale Dialog */}
       <YAxisEditDialog
         isOpen={yAxisDialog}
         onClose={() => setYAxisDialog(false)}

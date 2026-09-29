@@ -54,13 +54,10 @@
     public static int i(...);
 }
 
-# ──── Anti-Reflection: Block known decompiler markers ────
--optimizationpasses 5
--allowaccessmodification
--mergeinterfacesaggressively
--overloadaggressively
--repackageclasses ''
--flattenpackagehierarchy ''
+# ──── Anti-Reflection / Optimization ────
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-verbose
 
 # ──── Remove debugging attributes ────
 -keepattributes SourceFile,LineNumberTable

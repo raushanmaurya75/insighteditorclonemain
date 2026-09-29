@@ -519,11 +519,18 @@ function HomeFeedPage() {
           </button>
 
           <div className="feed-brand-wrap" onClick={scrollToTop}>
-            <span className="feed-brand-title">Instagram</span>
+            <img
+              src="/images/logoforhomefeed.png"
+              alt="Instagram"
+              className="feed-brand-logo-img"
+              width={103}
+              height={29}
+            />
             <span className="feed-brand-chevron" aria-hidden="true">
               <IgChevronDown size={14} strokeWidth={2.5} />
             </span>
           </div>
+
 
           <Link
             to="/insights"

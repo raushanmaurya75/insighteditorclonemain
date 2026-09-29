@@ -83,6 +83,7 @@ function PostCardItem({
   const likesDisplay = formatCompactNumber(post.likes + likeCountOffset);
   const commentsDisplay = formatCompactNumber(post.comments);
   const viewsDisplay = formatCompactNumber(post.views || post.likes * 10 || 1200);
+  const isReel = Boolean(post.is_video || post.video_url || (post as any).media_type === 2);
 
   const captionText = (post.caption || "").trim();
   const shouldTruncate = captionText.length > 32 || captionText.includes("\n");
@@ -123,9 +124,9 @@ function PostCardItem({
         </button>
       </header>
 
-      {/* 2. Media Image (with Aspect Ratio 4:5) */}
+      {/* 2. Media Image/Video (Aspect Ratio 9:16 for Reels, 4:5 for standard posts) */}
       <div
-        className="post-view-media-wrap"
+        className={`post-view-media-wrap ${isReel ? "post-view-media-reel aspect-[9/16]" : "aspect-[4/5]"}`}
         onDoubleClick={handleDoubleTap}
       >
         <img
@@ -148,6 +149,7 @@ function PostCardItem({
           </div>
         )}
       </div>
+
 
       {/* 3. View Insights & Boost Bar (Matching typography & colors) */}
       <div className="post-view-insights-bar">
@@ -251,11 +253,12 @@ function PostCardItem({
             </>
           )}
         </div>
-        <p className="post-view-age">{formatPostDate(post.timestamp)}</p>
+        <p className="post-view-age">{formatPostDate(post)}</p>
       </div>
     </article>
   );
 }
+
 
 function PostViewPage() {
   const navigate = useNavigate();

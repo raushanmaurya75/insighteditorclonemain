@@ -11,6 +11,7 @@ import reelVideo1 from "@/assets/videos/reel1.mp4";
 import reelVideo2 from "@/assets/videos/reel2.mp4";
 import reelVideo3 from "@/assets/videos/reel3.mp4";
 import { scrapeInstagramProfile, type ScrapedInstagramUser, type ScrapedPostNode } from "./instagram-scraper";
+import { syncPostToInsights } from "./insight-store";
 
 
 export interface ProfilePost {
@@ -25,7 +26,9 @@ export interface ProfilePost {
   views: number;
   caption: string;
   timestamp: number;
+  postTime?: string;
 }
+
 
 export interface ProfileHighlight {
   id: string;
@@ -339,6 +342,33 @@ export function setSelectedPostIndex(index: number) {
   }
 }
 
+export function updatePostData(
+  postIdOrIndex: string | number,
+  updatedFields: Partial<ProfilePost>
+) {
+  const posts = [...memoryProfile.posts];
+  let targetIndex = -1;
+  if (typeof postIdOrIndex === "number") {
+    targetIndex = postIdOrIndex;
+  } else {
+    targetIndex = posts.findIndex(
+      (p) => p.id === postIdOrIndex || p.shortcode === postIdOrIndex
+    );
+  }
+  if (targetIndex >= 0 && targetIndex < posts.length) {
+    posts[targetIndex] = { ...posts[targetIndex], ...updatedFields };
+    setProfileData({ posts });
+
+    const targetPost = posts[targetIndex];
+    syncPostToInsights(targetPost.id || targetPost.shortcode, {
+      views: targetPost.views,
+      likes: targetPost.likes,
+      comments: targetPost.comments,
+      thumbnailUrl: targetPost.thumbnail_src || targetPost.display_url,
+    });
+  }
+}
+
 export function resetToDefaultProfile() {
   memoryProfile = { ...DEFAULT_PROFILE };
   if (typeof window !== "undefined") {
@@ -507,14 +537,13 @@ export function formatCompactNumber(num: number): string {
   if (num == null || isNaN(num)) return "0";
   if (num >= 1_000_000) {
     const val = num / 1_000_000;
-    return val >= 10 ? `${val.toFixed(1).replace(/\.0$/, "")}M` : `${val.toFixed(1)}M`;
-  }
-  if (num >= 10_000) {
-    const val = num / 1_000;
-    return `${val.toFixed(1).replace(/\.0$/, "")}K`;
+    const formatted = val >= 10 || val % 1 === 0 ? val.toFixed(0) : val.toFixed(1).replace(/\.0$/, "");
+    return `${formatted}M`;
   }
   if (num >= 1_000) {
-    return num.toLocaleString();
+    const val = num / 1_000;
+    const formatted = val >= 10 || val % 1 === 0 ? val.toFixed(0) : val.toFixed(1).replace(/\.0$/, "");
+    return `${formatted}k`;
   }
   return num.toString();
 }
@@ -524,19 +553,27 @@ export function formatExactNumber(num: number): string {
   return num.toLocaleString();
 }
 
-export function formatPostDate(timestamp?: number | string): string {
-  if (!timestamp) return "1 August";
+export function formatPostDate(timestampOrTime?: number | string | ProfilePost): string {
+  if (!timestampOrTime) return "1 day ago";
 
-  if (typeof timestamp === "string" && !/^\d+$/.test(timestamp.trim())) {
-    return timestamp;
+  if (typeof timestampOrTime === "object" && timestampOrTime !== null) {
+    if ("postTime" in timestampOrTime && timestampOrTime.postTime && timestampOrTime.postTime.trim()) {
+      return timestampOrTime.postTime.trim();
+    }
+    return formatPostDate(timestampOrTime.timestamp);
   }
 
-  const numericTs = typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
-  if (isNaN(numericTs) || numericTs <= 0) return "1 August";
+  const input = typeof timestampOrTime === "string" ? timestampOrTime.trim() : timestampOrTime;
+  if (typeof input === "string" && !/^\d+$/.test(input)) {
+    return input;
+  }
+
+  const numericTs = typeof input === "string" ? parseInt(input, 10) : input;
+  if (isNaN(numericTs) || numericTs <= 0) return "1 day ago";
 
   const ms = numericTs < 10000000000 ? numericTs * 1000 : numericTs;
   const date = new Date(ms);
-  if (isNaN(date.getTime())) return "1 August";
+  if (isNaN(date.getTime())) return "1 day ago";
 
   const now = Date.now();
   const diffMs = now - date.getTime();
@@ -565,6 +602,7 @@ export function formatPostDate(timestamp?: number | string): string {
   }
   return `${day} ${month}`;
 }
+
 
 
 export function mapScrapedUserToProfile(user: ScrapedInstagramUser): ProfileData {
@@ -1355,6 +1393,7 @@ export function useProfile(): {
   updateHighlight: typeof updateHighlight;
   moveHighlight: typeof moveHighlight;
   reorderHighlights: typeof reorderHighlights;
+  updatePost: typeof updatePostData;
 } {
   const profile = useSyncExternalStore(
     subscribeProfile,
@@ -1366,6 +1405,7 @@ export function useProfile(): {
     profile,
     setProfile: setProfileData,
     selectPost: setSelectedPostIndex,
+    updatePost: updatePostData,
     resetProfile: resetToDefaultProfile,
     cloneProfile: cloneInstagramProfile,
     addHighlight,

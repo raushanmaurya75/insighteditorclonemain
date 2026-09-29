@@ -94,12 +94,15 @@ export interface PostInsightsData {
 
 export class GraphSplineMath {
   static formatViews(value: number): string {
+    if (value == null || isNaN(value)) return "0";
     if (value >= 1_000_000) {
       const m = value / 1_000_000;
-      return m % 1 === 0 ? `${m.toFixed(0)}M` : `${m.toFixed(1)}M`;
+      const formatted = m >= 10 || m % 1 === 0 ? m.toFixed(0) : m.toFixed(1).replace(/\.0$/, "");
+      return `${formatted}M`;
     } else if (value >= 1_000) {
       const k = value / 1_000;
-      return k % 1 === 0 ? `${k.toFixed(0)}K` : `${k.toFixed(1)}K`;
+      const formatted = k >= 10 || k % 1 === 0 ? k.toFixed(0) : k.toFixed(1).replace(/\.0$/, "");
+      return `${formatted}k`;
     } else {
       return value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
     }
@@ -107,7 +110,8 @@ export class GraphSplineMath {
 
   static parseViews(text: string | number): number {
     if (typeof text === "number") return text;
-    const clean = text.trim().replace(/,/g, "").toLowerCase();
+    if (text == null) return 0;
+    const clean = text.toString().trim().replace(/,/g, "").toLowerCase();
     if (!clean) return 0;
     if (clean.endsWith("m")) {
       const num = parseFloat(clean.slice(0, -1));
@@ -489,4 +493,25 @@ export function savePostInsights(data: PostInsightsData): void {
       JSON.stringify(data)
     );
   } catch {}
+}
+
+export function syncPostToInsights(
+  postId: string,
+  data: { views?: number; likes?: number; comments?: number; thumbnailUrl?: string }
+): void {
+  if (typeof window === "undefined" || !postId) return;
+  const current = loadPostInsights(postId);
+  const updated: PostInsightsData = {
+    ...current,
+    ...(data.views !== undefined ? { views: data.views } : {}),
+    ...(data.likes !== undefined ? { likes: data.likes } : {}),
+    ...(data.comments !== undefined ? { comments: data.comments } : {}),
+    ...(data.thumbnailUrl ? { customThumbnailUrl: data.thumbnailUrl } : {}),
+  };
+  if (data.views !== undefined && updated.viewsThisReelPoints?.length > 0) {
+    const pts = [...updated.viewsThisReelPoints];
+    pts[pts.length - 1] = { ...pts[pts.length - 1], value: data.views };
+    updated.viewsThisReelPoints = pts;
+  }
+  savePostInsights(updated);
 }

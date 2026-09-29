@@ -39,6 +39,11 @@ class MainActivity : FlutterActivity() {
                         val passed = runAllNativeChecks()
                         result.success(passed)
                     }
+                    "setScreenSecurity" -> {
+                        val secure = call.argument<Boolean>("secure") ?: false
+                        setScreenSecurity(secure)
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -164,17 +169,79 @@ class MainActivity : FlutterActivity() {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // Light Mode System Bar Styling
+    // Screen Security (Screenshot & Screen Recording Blocking)
+    // ═══════════════════════════════════════════════════════════
+
+    private var isScreenSecurityEnabled = false
+    private val securityHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val securityWatchdog = object : Runnable {
+        override fun run() {
+            if (isScreenSecurityEnabled) {
+                enforceSecureWindowFlags()
+            }
+            securityHandler.postDelayed(this, 1000)
+        }
+    }
+
+    private fun enforceSecureWindowFlags() {
+        runOnUiThread {
+            try {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    setRecentsScreenshotEnabled(false)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SECURITY", "Error enforcing FLAG_SECURE: $e")
+            }
+        }
+    }
+
+    private fun setScreenSecurity(enabled: Boolean) {
+        isScreenSecurityEnabled = enabled
+        runOnUiThread {
+            try {
+                if (enabled) {
+                    enforceSecureWindowFlags()
+                } else {
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        setRecentsScreenshotEnabled(true)
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SECURITY", "Error setting screen security: $e")
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Lifecycle & System Bar Styling
     // ═══════════════════════════════════════════════════════════
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyLightSystemBars()
+        securityHandler.postDelayed(securityWatchdog, 1000)
     }
 
     override fun onResume() {
         super.onResume()
         applyLightSystemBars()
+        if (isScreenSecurityEnabled) {
+            enforceSecureWindowFlags()
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (isScreenSecurityEnabled) {
+            enforceSecureWindowFlags()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        securityHandler.removeCallbacks(securityWatchdog)
     }
 
     private fun applyLightSystemBars() {

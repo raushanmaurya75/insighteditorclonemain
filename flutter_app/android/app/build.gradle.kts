@@ -27,25 +27,34 @@ android {
         versionName = flutter.versionName
     }
 
-    // ════════════════════════════════════════════════════════════
-    // LAYER 4: R8 Full-Mode Obfuscation & Minification
-    // ════════════════════════════════════════════════════════════
+    signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+        create("release") {
+            val debugConfig = getByName("debug")
+            storeFile = debugConfig.storeFile
+            storePassword = debugConfig.storePassword
+            keyAlias = debugConfig.keyAlias
+            keyPassword = debugConfig.keyPassword
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+    }
+
     buildTypes {
         release {
-            // Signing with debug keys for now; replace with release keystore before Play Store
-            signingConfig = signingConfigs.getByName("debug")
-
-            // Enable R8 shrinking, obfuscation, and resource shrinking
-            isMinifyEnabled = true
-            isShrinkResources = true
-
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
         debug {
-            // Keep debug build clean and unobfuscated for development
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false
         }

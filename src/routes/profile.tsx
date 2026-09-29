@@ -39,10 +39,7 @@ import {
   Sparkles,
   X,
   RotateCcw,
-  Settings,
-  TrendingUp,
-  Bookmark,
-  Activity,
+  Pencil,
 } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
@@ -534,6 +531,24 @@ function ProfilePage() {
             </div>
 
             <div className="profile-menu-list">
+              {/* Edit Profile Option */}
+              <button
+                type="button"
+                className="profile-menu-item"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsEditProfileOpen(true);
+                }}
+              >
+                <div className="profile-menu-item-icon">
+                  <Pencil size={18} />
+                </div>
+                <div className="profile-menu-item-text">
+                  <b>Edit profile</b>
+                  <span>Edit name, bio, posts, reels & statistics</span>
+                </div>
+              </button>
+
               {/* Clone Instagram Option */}
               <button
                 type="button"
@@ -567,62 +582,6 @@ function ProfilePage() {
                   </div>
                 </button>
               )}
-
-              <div className="profile-menu-divider" />
-
-              <Link
-                to="/dashboard"
-                className="profile-menu-item"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="profile-menu-item-icon">
-                  <TrendingUp size={18} />
-                </div>
-                <div className="profile-menu-item-text">
-                  <b>Professional Dashboard</b>
-                  <span>Creator tools, audience reach and insights</span>
-                </div>
-              </Link>
-
-              <Link
-                to="/insights"
-                className="profile-menu-item"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="profile-menu-item-icon">
-                  <Activity size={18} />
-                </div>
-                <div className="profile-menu-item-text">
-                  <b>Account Insights</b>
-                  <span>View accounts reached and engaged</span>
-                </div>
-              </Link>
-
-              <button
-                type="button"
-                className="profile-menu-item"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="profile-menu-item-icon">
-                  <Settings size={18} />
-                </div>
-                <div className="profile-menu-item-text">
-                  <b>Settings and Privacy</b>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="profile-menu-item"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="profile-menu-item-icon">
-                  <Bookmark size={18} />
-                </div>
-                <div className="profile-menu-item-text">
-                  <b>Saved</b>
-                </div>
-              </button>
             </div>
           </div>
         </div>

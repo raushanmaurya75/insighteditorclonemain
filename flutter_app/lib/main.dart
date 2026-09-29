@@ -760,6 +760,18 @@ class RaspSecurityService {
       return true;
     }
   }
+
+  /// Sets hardware FLAG_SECURE on Android window to block screenshots & screen recording.
+  static Future<bool> setScreenSecurity(bool secure) async {
+    if (kIsWeb) return true;
+    try {
+      final result = await _securityChannel.invokeMethod<bool>('setScreenSecurity', {'secure': secure});
+      return result ?? true;
+    } catch (e) {
+      debugPrint('[SECURITY] setScreenSecurity failed: $e');
+      return false;
+    }
+  }
 }
 
 void main() async {
@@ -784,6 +796,9 @@ void main() async {
     await RaspSecurityService.triggerSecurityLockdown('Native integrity check failed');
     return;
   }
+
+  // Enable edge-to-edge system UI so Flutter receives accurate system navigation bar insets
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Set Android system bars (status bar and navigation bar) strictly to Light Theme
   SystemChrome.setSystemUIOverlayStyle(
@@ -926,8 +941,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
           backgroundColor: Colors.white,
           body: SafeArea(
             top: true,
-            bottom: false,
-          child: Stack(
+            bottom: true,
+            maintainBottomViewPadding: true,
+            child: Stack(
             children: [
               // WebView loading from embedded in-app localhost with native JS Handlers & Interceptor
               InAppWebView(
@@ -942,6 +958,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     callback: (args) async {
                       final username = args.isNotEmpty ? args[0].toString() : '';
                       return await NativeScraperHandler.scrapeProfile(username);
+                    },
+                  );
+
+                  // Register Screen Security Handler for Trial code protection
+                  controller.addJavaScriptHandler(
+                    handlerName: 'setScreenSecurity',
+                    callback: (args) async {
+                      final secure = args.isNotEmpty && args[0] == true;
+                      await RaspSecurityService.setScreenSecurity(secure);
+                      return {'status': 'ok', 'secure': secure};
                     },
                   );
                 },
@@ -976,6 +1002,14 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 },
                 shouldInterceptRequest: (controller, request) async {
                   final uri = request.url;
+                  if (uri.path == '/api/security/screen-protect') {
+                    final secure = uri.queryParameters['secure'] == '1';
+                    await RaspSecurityService.setScreenSecurity(secure);
+                    return WebResourceResponse(
+                      contentType: 'application/json',
+                      data: Uint8List.fromList(utf8.encode('{"status":"ok","secure":$secure}')),
+                    );
+                  }
                   if (uri.path.startsWith('/api/')) {
                     return await NativeScraperHandler.handleApiRequest(uri);
                   }
